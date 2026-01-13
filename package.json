@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
+    "@tailwindcss/typography": "^0.5.19",
     "babel-plugin-react-compiler": "^1.0.0",
     "next": "16.1.1",
     "react": "19.2.3",
