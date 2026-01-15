@@ -141,8 +141,6 @@
     border-color: var(--color-gray-200, currentcolor);
   }
 
-
-
   html {
     font-size: 16px;
   }
@@ -161,14 +159,14 @@
 
   /* 只能叫card */
   .card {
-    @apply p-6 bg-gray-100 border border-gray-300 rounded-lg shadow-lg text-gray-700 text-lg font-semibold leading-relaxed tracking-wide text-center max-w-sm mx-auto mt-10
+    @apply p-6 bg-gray-100 border border-gray-300 rounded-lg shadow-lg text-gray-700 text-lg font-semibold leading-relaxed tracking-wide text-center max-w-sm mx-auto mt-10;
   }
 }
 
 /* 完全自己定义类名 */
 @layer utilities {
   .mycard {
-    @apply p-6 bg-gray-100 border border-gray-300 rounded-lg shadow-lg text-gray-700 text-lg font-semibold leading-relaxed tracking-wide text-center max-w-sm mx-auto mt-10
+    @apply p-6 bg-gray-100 border border-gray-300 rounded-lg shadow-lg text-gray-700 text-lg font-semibold leading-relaxed tracking-wide text-center max-w-sm mx-auto mt-10;
   }
 
   .background-light900_dark200 {
@@ -224,7 +222,7 @@
 
   50% {
     background-position: 100% 50%;
-  }rgb(200, 231, 60)rgb(195, 236, 11)
+  }
 
   100% {
     background-position: 0% 50%;
