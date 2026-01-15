@@ -5,6 +5,20 @@
 
 /* 定义整体主题样式 */
 @theme inline {
+  /* 自定义颜色值 */
+  --color-dark-100: #000000;
+  --color-dark-200: #0f1117;
+  --color-dark-300: #151821;
+  --color-dark-400: #212734;
+  --color-dark-500: #101012;
+
+  --color-light-400: #858ead;
+  --color-light-500: #7b8ec8;
+  --color-light-700: #dce3f1;
+  --color-light-800: #f4f6f8;
+  --color-light-850: #fdfdfd;
+  --color-light-900: #ffffff;
+  /* 自定义颜色值结束 */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -119,6 +133,16 @@
     @apply border-border outline-ring/50;
   }
 
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+
+
   html {
     font-size: 16px;
   }
@@ -145,5 +169,25 @@
 @layer utilities {
   .mycard {
     @apply p-6 bg-gray-100 border border-gray-300 rounded-lg shadow-lg text-gray-700 text-lg font-semibold leading-relaxed tracking-wide text-center max-w-sm mx-auto mt-10
+  }
+
+  .background-light900_dark200 {
+    @apply bg-background dark:bg-dark-200;
+  }
+
+  .text-primary-500 {
+    color: orange;
+  }
+
+  .flex-center {
+    @apply flex justify-center items-center;
+  }
+
+  .flex-between {
+    @apply flex justify-between items-center;
+  }
+
+  .flex-start {
+    @apply flex justify-start items-center;
   }
 }

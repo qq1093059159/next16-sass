@@ -1,4 +1,4 @@
-import { ModeToggle } from "@/components/DarkMode";
+import Navbar from "@/components/navigation/navbar";
 import React from "react";
 
 export default function DashboardLayout({
@@ -8,12 +8,7 @@ export default function DashboardLayout({
 }>) {
   return (
     <div>
-      <h2 className="flex justify-between items-center">
-        <div>Root layout</div>
-        <div>
-          <ModeToggle />
-        </div>
-      </h2>
+      <Navbar></Navbar>
       {children}
     </div>
   );
