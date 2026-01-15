@@ -1,3 +1,4 @@
+import { ModeToggle } from "@/components/DarkMode";
 import React from "react";
 
 export default function DashboardLayout({
@@ -7,7 +8,12 @@ export default function DashboardLayout({
 }>) {
   return (
     <div>
-      <h2>Root layout</h2>
+      <h2 className="flex justify-between items-center">
+        <div>Root layout</div>
+        <div>
+          <ModeToggle />
+        </div>
+      </h2>
       {children}
     </div>
   );
