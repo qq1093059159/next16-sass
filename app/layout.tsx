@@ -9,8 +9,12 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({
   children,
+  team,
+  analytics,
 }: {
   children: React.ReactNode;
+  team: React.ReactNode;
+  analytics: React.ReactNode;
 }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
@@ -22,7 +26,10 @@ export default function DashboardLayout({
           disableTransitionOnChange
         >
           <main className="bg-white text-black dark:bg-black dark:text-white">
+            {/* 加载平行路由 */}
+            {team}
             {children}
+            {analytics}
           </main>
         </ThemeProvider>
       </body>
