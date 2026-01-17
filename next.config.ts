@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
-
+// import createMDX from '@next/mdx'
+// const withMDX = createMDX({
+//     //extension: /\.(md|mdx)$/ 默认只支持mdx文件,如果想额外支持md文件编写次行代码。
+// });
 const nextConfig: NextConfig = {
   /* config options here */
   // 开启reactCompiler
@@ -24,6 +27,12 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840], // 设备尺寸
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384], // 图片尺寸
   },
+  // 配置SSG全静态站点
+  // output: "export", // 导出静态站点
+  // distDir: "dist", // 导出目录
+  // trailingSlash: true, // 添加尾部斜杠，生成 /about/index.html 而不是 /about.html
+  // 支持MDX
+  // pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
 };
 
 export default nextConfig;

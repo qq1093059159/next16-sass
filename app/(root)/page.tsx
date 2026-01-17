@@ -2,6 +2,7 @@
 // "use cache"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Script from "next/script"; //引入Script组件
 export default function Home() {
   const arr = [1, 2, 3, 4, 5];
   const router = useRouter();
@@ -46,6 +47,7 @@ export default function Home() {
           </button>
         </>
       </main>
+      <Script src="https://unpkg.com/vue@3/dist/vue.global.js" />
     </div>
   );
 }
