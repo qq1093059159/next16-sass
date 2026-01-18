@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProxyConfig } from "next/server";
+export { auth as middleware } from "@/auth"
 export async function proxy(request: NextRequest) {
   // 此时会拦截项目中所有的请求，包括静态资源、API请求、页面请求等
   console.log(request.url, 'url');
