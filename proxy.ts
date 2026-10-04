@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProxyConfig } from "next/server";
+import { get } from "@vercel/global-config";
 export async function proxy(request: NextRequest) {
+  // /welcome：返回 Vercel Global Config 中的 greeting
+  if (request.nextUrl.pathname === "/welcome") {
+    let greeting: unknown = null;
+    try {
+      greeting = await get("greeting");
+    } catch {
+      greeting = null;
+    }
+    return NextResponse.json(greeting ?? null);
+  }
   // 此时会拦截项目中所有的请求，包括静态资源、API请求、页面请求等
   console.log(request.url, 'url');
   // const cookie = request.cookies.get('token');
@@ -26,7 +37,7 @@ const corsHeaders = {
 //配置匹配路径
 export const config: ProxyConfig = {
   // matcher: '/api/:path*',
-  matcher: ['/api/:path*', '/home/:path*'],
+  matcher: ['/api/:path*', '/home/:path*', '/welcome'],
   //matcher: ['/api/:path*','/api/user/:path*'], 支持单个以及多个路径匹配
   //matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'], 同样支持正则表达式匹配
 }
