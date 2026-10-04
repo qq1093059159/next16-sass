@@ -63,7 +63,7 @@
 └──────────────────────────────────────────────────────────┘
 ┌─ AI ────────────────────────────────────────────────────┐
 │  ai 6.0  ·  @ai-sdk/react 3  ·  @ai-sdk/deepseek 2.0      │
-│  ⚠️ app/api/chat/route.ts 是空文件，见第五章               │
+│  ⚠️ app/api/chat/route.ts 为占位 501（待实现），见第五章      │
 └──────────────────────────────────────────────────────────┘
 ┌─ 内容 ──────────────────────────────────────────────────┐
 │  @next/mdx · @mdx-js/loader · @mdx-js/react               │
@@ -941,7 +941,7 @@ ai@6.0.39            ← 核心（streamText / generateText / 工具调用 / Age
 @ai-sdk/deepseek@2.0.8 ← DeepSeek 模型适配（deepseek-chat / deepseek-reasoner）
 ```
 
-但 **`app/api/chat/route.ts` 是空文件（0 字节）**，`register` 同理。也就是说：接线位已挖好，AI 能力**尚未通电**。下面给出可直接落地的补全方案。
+但 **`app/api/chat/route.ts` 与 `api/register` 仅是占位 501 接口（尚未通电）**，`register` 同理。也就是说：接线位已挖好，AI 能力**尚未通电**。下面给出可直接落地的补全方案。
 
 ### 5.2 推荐实现：流式对话（DeepSeek 版）
 
@@ -1081,7 +1081,7 @@ export default nextConfig;
 | 4 | 客户端守卫写在 `useEffect` 里 `redirect()` | `(root)/home/page.tsx` | 🟡 中 | 改在 `proxy.ts`（请求级）或服务端 layout 鉴权 |
 | 5 | `server/page.tsx` 模块级 MySQL 连接池 + 硬编码凭据 + 相对路径读文件 | `server/page.tsx` | 🔴 高 | 改为环境变量注入、连接池放全局单例、路径用 `process.cwd()` |
 | 6 | `api/books/[id]` 的 `params` 未用 Promise 写法（旧版） | `api/books/[id]/route.ts` | 🟢 低 | 改为 `params: Promise<{id:string}>` + `await` |
-| 7 | `api/chat` 与 `api/register` 是空文件 | `api/chat`、`api/register` | 🟡 中 | 实现 5.2 的对话接口，或删除占位 |
+| 7 | `api/chat` 与 `api/register` 改为占位 501 接口（非空文件） | `api/chat`、`api/register` | 🟢 低 | 按 5.2 补全对话接口，或保留占位 |
 | 8 | Clerk 依赖保留但仅作备份未接线 | `package.json` | 🟢 低 | 生产启用 Clerk（配 NEXT_PUBLIC_CLERK_*）或移除其依赖 |
 | 9 | MDX 路由未真正启用（`pageExtensions` 注释） | `next.config.ts` | 🟢 低 | 需要 MDX 时取消注释并用 `withMDX()` 包裹 |
 | 10 | `components.json` 配了 `"hooks": "@/hooks"` 但无 `hooks/` 目录 | `components.json` | 🟢 低 | 创建 `hooks/` 或移除该别名 |
