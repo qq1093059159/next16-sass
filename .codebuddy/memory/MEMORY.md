@@ -44,3 +44,9 @@
 - Git Credential Manager 弹出 **"TLS certificate verification has been disabled!"** 警告 —— 该仓库 git 配置关掉了 TLS 证书校验，属于安全隐患，建议开启。
 - Git Bash 的 `/tmp` 实际是 `C:\Users\Administrator\AppData\Local\Temp`，但 **Windows Python 解析 `/tmp/xxx` 会当成 `C:\tmp\xxx`**（FileNotFoundError）。跨 bash/python 传临时文件路径时必须用 `cygpath -w` 转换。
 - `write_to_file` 工具偶发报 `missing required argument filePath`（参数校验抖动），连续重试即可成功；大批量写文件改用 `cat > file <<'EOF'` heredoc，注意单条命令不能超过 8000 字节。
+
+## 文档规范（本仓库唯一说明文档 = README.md）
+- **只有 README.md 一份项目说明文档**。旧的 `项目分析.md`（2026-09-15 静态快照）已于 2026-10-26 合并删除 —— 信息过时且与 README 重复。
+- README 结构（2026-10-26 重构后）：速览(30秒) → 目录导航 → 一~九章，第四章「核心知识点详解」27 个小节是主体。
+- **写 Markdown 标题不要用 emoji**：`⚠️` 的 U+FE0F 会进入 GitHub 锚点，极脆。§4.27 已清理。
+- **锚点校验必须用官方 github-slugger**，不要自制简化算法：`npm pack github-slugger@2` 取 `slug()` 复算；GitHub 规则是连续空格**逐个**转连字符、CJK 标点删除、下划线保留、重复标题追加 `-1`。
