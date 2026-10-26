@@ -22,3 +22,24 @@
 - Next.js 16 把 `proxy.ts` 当作 middleware 文件名，且与 `middleware.ts` **互斥**（构建报 "Please use ./proxy.ts only"）。本项目所有 middleware 逻辑统一放 `proxy.ts`（含 CORS 与 `/welcome` 读 global config）。
 - **本地网络无法直连 `*.vercel.app`**（curl 返回 000，疑似墙/代理限制），无法本地 curl 验证部署，需浏览器访问确认。
 - `@vercel/global-config` 的 `get('greeting')` 读的是 Vercel 项目级 Global Config（不是常规 env 变量），需在 Vercel 控制台配置，否则 `/welcome` 返回 `null`。
+
+## Cache Components（2026-10-26 已开启，本仓库硬依赖）
+- `next.config.ts` 的 `cacheComponents: true` **已开启**，且**不可关闭** —— `app/mycache/CachedPart.tsx` 与 `app/(root)/ssg/[id]/page.tsx` 用了 `"use cache"`，关掉开关构建会直接报 `To use "use cache", please enable the feature flag 'cacheComponents'`。
+- 开启后**段级配置全部被禁用**（构建期报错，非警告）：`export const dynamic` / `revalidate` / `dynamicParams`。
+  - 替代：`await connection()`（next/server）、`"use cache"` + `cacheLife()` / `cacheTag()`。
+- `revalidateTag(tag, profile)` 在 Next 16.3.8 是**两个参数**（`profile: string | {expire}`），写一个参数会报 `Expected 2 arguments, but got 1`。`updateTag(tag)` 是 Next 16 新增（只能 Server Action 内调用，实现读己所写）；`refresh()` 刷新客户端 Router Cache。
+- `generateStaticParams` 在 Cache Components 下可用；`dynamicParams` 不可配置，固定为 fallback: blocking。
+- 构建产物标记：`○`=全静态，`◐`=Partial Prerender（静态壳子+流式动态），`ƒ`=全动态。开启后**页面路由基本没有 `ƒ`**，全是 `○`/`◐`。
+
+## 实测坑点（已在仓库内做成对照示例）
+- **PPR 下页面里 `notFound()` 返回 HTTP 200**（页面是 404 界面但状态码是 200，SEO 不友好）。已验证 `/notfound`（○静态）与 `/notfound-dynamic`（◐ PPR + `await connection()`）**都是 200** —— 加 connection() 救不回来。根因是响应一开始流式输出（预渲染壳子已发首字节），状态码就锁定 200。
+  - 稳定拿到 404 只有两条路：① 框架级「路由未匹配」；② Route Handler 显式 `new Response(..., {status:404})`（示例 `app/api/notfound/route.ts`）。
+- `useSearchParams` 在静态预渲染页面里必须包 `<Suspense>`，否则构建报 `should be wrapped in a suspense boundary`。
+- `error.tsx` 必须接 `error` / `reset` 两个 prop；`global-error.tsx` 会替换根 layout，**必须自己输出 `<html><body>`**。
+
+## 本机环境坑（Windows / Git Bash）
+- **IDE 的批量删除保护会拦截 `next build` 清理 `.next`**（报 `SAFE_DELETE_BULK_CONFIRM_REQUIRED`，count=500）。解决：命令前加 `CODEBUDDY_SAFE_DELETE_ENABLED=0`。
+- `git push` 到 `qq1093059159/next16-sass` **无法自动完成**：remote URL 里内嵌了用户名 `qq1093059159`，而本机 Git Credential Manager 只存了另一个账号（`1256807020`），用它推会得到 `Permission denied ... 403`。非交互环境无法弹窗输入凭据 → 需用户手动 push 或先配置该账号凭据。
+- Git Credential Manager 弹出 **"TLS certificate verification has been disabled!"** 警告 —— 该仓库 git 配置关掉了 TLS 证书校验，属于安全隐患，建议开启。
+- Git Bash 的 `/tmp` 实际是 `C:\Users\Administrator\AppData\Local\Temp`，但 **Windows Python 解析 `/tmp/xxx` 会当成 `C:\tmp\xxx`**（FileNotFoundError）。跨 bash/python 传临时文件路径时必须用 `cygpath -w` 转换。
+- `write_to_file` 工具偶发报 `missing required argument filePath`（参数校验抖动），连续重试即可成功；大批量写文件改用 `cat > file <<'EOF'` heredoc，注意单条命令不能超过 8000 字节。
