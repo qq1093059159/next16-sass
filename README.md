@@ -59,6 +59,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | [七、架构师 Review：已知问题与 TODO](#七架构师-review已知问题与-todo) | 15 个真实缺陷清单（含已修复） | 想把它改造成生产基座 |
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
 | [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
+| [**十、doc/ 教学文档**](#十doc-教学文档25-课体系) | **25 课教学拆解**：概念 + 真实代码 + 动手实验 + 自检 | 想系统跟着学 |
 
 ---
 
@@ -1638,6 +1639,44 @@ eslint          9.39.2
 ```
 
 > 版本号以 `package.json` 为准。
+
+## 十、doc/ 教学文档（25 课体系）
+
+`doc/` 目录是本文档的**教学化拆解** —— 一次一个知识点，配可动手验证的实验步骤。
+
+| 课 | 主题 | 你会学到 |
+|---|---|---|
+| 01 | 项目总览与运行方式 | 仓库定位、三种构建标记（`○`/`◐`/`ƒ`）、启动坑 |
+| 02 | 路由约定文件八件套 | 八个文件名各自的契约与硬性规则 |
+| 03 | 路由组与平行路由 | `(folder)` vs `@folder`、`default.tsx` 的实测行为 |
+| 04 | 动态路由三兄弟 | `[id]` / `[...id]` / `[[...id]]`、`params` 是 Promise |
+| 05 | layout 与 template | 状态保留 vs 归零的对照实验 |
+| 06 | 错误边界与 404 状态码 | 错误边界层级、**PPR 下 `notFound()` 返回 200 的真相** |
+| 07 | RSC 与客户端组件边界 | `"use client"` 的真实含义、服务端壳 + 客户端岛 |
+| 08 | server-only 约束 | 编译期护栏 |
+| 09 | Suspense 与流式渲染 | `loading.tsx` 是语法糖、`connection()` |
+| 10 | Cache Components | `"use cache"` / `cacheLife` / `cacheTag` |
+| 11 | 静态生成与 ISR | `generateStaticParams`、`x-nextjs-cache` |
+| 12 | 按需失效四件套 | `revalidatePath` / `revalidateTag` / `updateTag` / `refresh` |
+| 13 | Server Actions 三阶段 | fetch → Server Action → useActionState + Zod |
+| 14 | 乐观更新与表单状态 | `useOptimistic`、`useFormStatus` |
+| 15 | 响应后任务 `after()` | 埋点不阻塞首屏 |
+| 16 | Route Handlers 基础 | 方法导出、请求体五种解析、**不写 OPTIONS → 405** |
+| 17 | Cookie 读写与会话 | `httpOnly`/`secure`/`sameSite` |
+| 18 | CORS / 重定向 / 改写 | 预检流程、`redirect` vs `rewrite` |
+| 19 | 流式响应 SSE | `ReadableStream` 逐块推送 |
+| 20 | 元数据与 SEO 约定文件 | `metadata`/`generateMetadata`/`viewport` + 六个约定文件 |
+| 21 | 客户端导航与 Hooks | `Link` vs `useRouter`、五个导航 Hook |
+| 22 | 图片与字体优化 | `next/image` 三种来源、`sizes`、`next/font` |
+| 23 | proxy 与 instrumentation | Next 16 的 `middleware.ts` → `proxy.ts` 改名 |
+| 24 | 环境变量与样式体系 | `NEXT_PUBLIC_` 可见性、Tailwind v4 CSS-first、`cn()` |
+| 25 | 实测踩坑与学习路线 | 12 条**实测复现**的坑 + 24 天路线 + 毕业自检 |
+
+**入口**：[`doc/README.md`](doc/README.md)
+
+> 每课都基于**仓库里的真实代码**（逐行核对过），并给出可在浏览器里立刻复现的实验步骤。
+> 最后一课把全部**实测复现**的结论浓缩成速查表 —— 那些和直觉相反的行为都在那里。
+
 
 ---
 
