@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   },
   // 开启缓存
   // cacheComponents: true // 启用缓存组件
-  cacheComponents: false, // 缓存组件(关闭或者不配置)
+  cacheComponents: true, // 缓存组件(关闭或者不配置)
   images: {
     remotePatterns: [
       {

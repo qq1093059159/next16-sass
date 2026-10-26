@@ -12,7 +12,7 @@ export async function handleLogin(_prevState: any, formData: FormData) {
   if (!result.success) {
     const errorMessage = z.treeifyError(result.error).properties; //调用zod的treeifyError方法将错误信息转换为对象
     let str = ''
-    Object.entries(errorMessage!).forEach(([_key, value]) => {
+    Object.entries(errorMessage!).forEach(([, value]) => {
       value.errors.forEach((error: any) => {
         str += error + '\n' //将错误信息拼接成字符串
       })
