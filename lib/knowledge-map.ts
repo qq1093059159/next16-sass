@@ -65,7 +65,7 @@ export const knowledgeMap: KnowledgeSection[] = [
         name: "default.tsx",
         href: "/basic/a",
         file: "app/default.tsx · app/@team/default.tsx · app/@analytics/default.tsx",
-        desc: "平行路由 slot 的兜底。缺了它，软导航进来会 404 —— 平行路由最高频事故。",
+        desc: "平行路由 slot 的兜底。硬刷新到没有对应 slot 的路由时，Next 渲染它而不是报 404。缺了它，slot 会直接空掉 —— 平行路由最高频事故。",
       },
     ],
   },
@@ -125,7 +125,7 @@ export const knowledgeMap: KnowledgeSection[] = [
         name: "cacheLife",
         href: "/mycache",
         file: "app/mycache/CachedPart.tsx",
-        desc: "stale / revalidate / expire 三段语义；预设 seconds…max。本项目用 hours。",
+        desc: "stale / revalidate / expire 三段语义；预设 default|seconds|minutes|hours|days|weeks|max。本项目用 hours。",
       },
       {
         name: "cacheTag",
@@ -227,7 +227,7 @@ export const knowledgeMap: KnowledgeSection[] = [
         name: "HTTP 方法导出",
         href: "/api/user",
         file: "app/api/user/route.ts",
-        desc: "GET / POST / PUT / PATCH / DELETE / HEAD；不写 OPTIONS 时 Next 自动补一个 204。",
+        desc: "GET / POST / PUT / PATCH / DELETE / HEAD。实测：未定义 OPTIONS 时 Next 16 返回 405 Method Not Allowed（带 Allow 头），并不会自动补 204。",
       },
       {
         name: "请求体四种解析",
@@ -239,7 +239,7 @@ export const knowledgeMap: KnowledgeSection[] = [
         name: "params 是 Promise",
         href: "/api/user/886",
         file: "app/api/user/[id]/route.ts · app/api/books/[id]/route.ts",
-        desc: "Next 15+ 破坏性变更：context.params 必须 await。本项目两种写法并存，是活化石。",
+        desc: "Next 15+ 破坏性变更：context.params 变成 Promise，必须 await。本仓库已全部迁移（旧写法会静默拿到 NaN）。",
       },
       {
         name: "Cookie 读写",
@@ -335,7 +335,7 @@ export const knowledgeMap: KnowledgeSection[] = [
         name: "next/image",
         href: "/myimage",
         file: "app/myimage/page.tsx",
-        desc: "静态 import 自动带宽高；远程图需在 remotePatterns 白名单；sizes 决定下载哪一档。",
+        desc: "静态 import 会自动注入宽高；远程图需在 remotePatterns 白名单；sizes 决定浏览器下载哪一档尺寸。",
       },
       {
         name: "next/font",
@@ -417,6 +417,12 @@ export const knowledgeMap: KnowledgeSection[] = [
         href: "/hooks",
         file: "app/(root)/hooks/page.tsx",
         desc: "在静态预渲染页面里直接用 useSearchParams，next build 会报 should be wrapped in a suspense boundary。",
+      },
+      {
+        name: "未定义 OPTIONS → 405 不是 204",
+        href: "/api/cors",
+        file: "app/api/cors/route.ts",
+        desc: "实测：路由未导出 OPTIONS 时，Next 16 返回 405 Method Not Allowed（带 Allow 头），既不是预检该有的 2xx 也不带 CORS 头。需要处理预检必须自己手写 OPTIONS。",
       },
       {
         name: "error.tsx 必须接 error / reset",

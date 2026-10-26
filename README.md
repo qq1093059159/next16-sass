@@ -56,7 +56,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | [四、核心知识点详解](#四核心知识点详解) | **27 个主题**逐个拆解（**本文主体**） | 系统学习 App Router |
 | [五、AI 能力专区](#五ai-能力专区ai-潮流达人视角) | AI SDK 6 / DeepSeek 接线现状与补全方案 | 想接 AI 的人 |
 | [六、next.config.ts 逐项拆解](#六nextconfigts-逐项拆解) | 每个配置项在干什么 | 配置调优 |
-| [七、架构师 Review：已知问题与 TODO](#七架构师-review已知问题与-todo) | 14 个真实缺陷清单（含已修复） | 想把它改造成生产基座 |
+| [七、架构师 Review：已知问题与 TODO](#七架构师-review已知问题与-todo) | 15 个真实缺陷清单（含已修复） | 想把它改造成生产基座 |
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
 | [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
 
@@ -262,7 +262,7 @@ next16-sass/
 | `/mylogin` | `(auth)/mylogin` | 传统 fetch + router.push |
 | `/serverlogin` | `(auth)/serverlogin` | Server Action + FormData + `.bind()` |
 | `/serverzodlogin` | `(auth)/serverzodlogin` | `useActionState` + Zod ★推荐写法 |
-| `/dashboard` | `(dashboard)/dashboard/...` | 路由组 + 嵌套布局 |
+| `/dashboard/users` `/dashboard/analytics` | `(dashboard)/dashboard/...` | 路由组 + 嵌套布局（⚠️ `/dashboard` 本身没有 `page.tsx`，访问是 404） |
 | `/dashboard/users/1` | `(dashboard)/.../users/[id]` | 动态路由 + generateMetadata |
 | `/basic/a` `/basic/b` | `basic/a` `basic/b` | loading 边界 + layout/template 状态对比 |
 | `/client` `/serveronly` | 同名目录 | RSC 与 Client 边界对照 |
@@ -311,11 +311,11 @@ Next.js 靠**文件名约定**（而非配置）驱动渲染。仓库把这七�
 
 | 文件 | 作用 | 本仓库位置 | 硬性规则 |
 |---|---|---|---|
-| `layout.tsx` | 布局外壳，**不随导航重挂载** | `app/layout.tsx`、`(dashboard)/dashboard/layout.tsx`、`basic/layout.tsx` | 根 layout **必须**含 `<html><body>` |
-| `template.tsx` | 布局外壳，**每次导航重新挂载** | `basic/template.tsx` | 与 layout 只差这一点 |
+| `layout.tsx` | 布局外壳，**不随导航重挂载** | `app/layout.tsx`、`app/(dashboard)/dashboard/layout.tsx`、`app/basic/layout.tsx` | 根 layout **必须**含 `<html><body>` |
+| `template.tsx` | 布局外壳，**每次导航重新挂载** | `app/basic/template.tsx` | 与 layout 只差这一点 |
 | `page.tsx` | 路由页面本体 | 到处都是 | 一个目录只能有一个；只有 `page` 才对外可见 |
-| `loading.tsx` | Suspense 边界 | `app/loading.tsx`、`basic/loading.tsx` | 自动包 `<Suspense fallback>` |
-| `error.tsx` | 段级错误边界 | `(root)/error.tsx`、`basic/error.tsx` | **必须是 `"use client"`** |
+| `loading.tsx` | Suspense 边界 | `app/loading.tsx`、`app/basic/loading.tsx` | 自动包 `<Suspense fallback>` |
+| `error.tsx` | 段级错误边界 | `app/(root)/error.tsx`、`app/basic/error.tsx` | **必须是 `"use client"`**，且要接 `error` / `reset` |
 | `global-error.tsx` | 全局错误边界 | `app/global-error.tsx` | 会**替换根 layout**，须自己输出 `<html><body>` |
 | `not-found.tsx` | 404 | `app/not-found.tsx` | 由 `notFound()` 或未匹配路由触发 |
 
@@ -405,13 +405,23 @@ export default function Page() {
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 }
-// ❌ 旧写法（本项目 api/books/[id]/route.ts 里还有残留）
+// ❌ 旧写法（Next 15 之前）：params 是同步对象
 export async function PUT(request: Request, context: { params: { id: string } }) {
-  const id = +context.params.id;   // ← 没有 await，是旧写法对照
+  const id = +context.params.id;   // ← 没有 await
 }
 ```
 
-本项目两种写法并存，正好是**版本演进的活化石**。
+本仓库**已经全部迁移到新写法**：
+
+```ts
+// app/api/books/[id]/route.ts ✅
+export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  const id = +(await context.params).id;
+}
+```
+
+> 旧写法在 Next 15+ 下会拿到一个 **Promise**，`+context.params.id` 求值成 `NaN` —— 是个静默 bug。
+> 本仓库所有动态段（`api/books/[id]`、`api/user/[id]`、`dashboard/users/[id]`、`ssg/[id]`）都已用 `await params`。
 
 ### 4.4 layout vs template：状态保持实验
 
@@ -496,10 +506,19 @@ export default async function ServerPage() {
 **证据三：`serveronly/page.tsx` —— 编译期就把误用打死**
 
 ```tsx
+// app/serveronly/page.tsx
 import "server-only";
-export default function ServerOnly(type: 0 | 1) {
-  if (type === 0) { return fetch("https://api.github.com"); }
-  else { return new WebSocket("wss://api.github.com"); }
+
+export default function ServerOnlyPage() {
+  return (
+    <main className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Server Only</h1>
+      <p>
+        本模块顶部带有 <code>import &quot;server-only&quot;</code>。它只能在服务端组件（RSC）中使用；
+        一旦被客户端组件导入，构建期即报错，从而把不该跨边界的代码锁死在服务端。
+      </p>
+    </main>
+  );
 }
 ```
 
@@ -510,18 +529,32 @@ export default function ServerOnly(type: 0 | 1) {
 **最佳实践形态**请看 `components/navigation/navbar/index.tsx` —— **服务端壳 + 客户端岛**：
 
 ```tsx
-// 服务端组件（无 "use client"）
+// components/navigation/navbar/index.tsx —— 服务端组件（无 "use client"）
+import Link from "next/link";
 import Image from "next/image";
 import { ModeToggle } from "@/components/DarkMode";   // ← 客户端岛
-export default function Navbar() {
+
+const Navbar = () => {
   return (
-    <nav>
-      <Image src="/globe.svg" width={23} height={23} alt="logo" />
-      <ModeToggle />    {/* ← 只有这一小块 JS 会被打包下发 */}
+    <nav className="flex-between background-light900_dark200 fixed z-50 ...">
+      <Link href="/" className="flex items-center gap-1">
+        <Image src="/globe.svg" width={23} height={23} alt="logo" />
+        <p className="h2-bold font-space-grotesk ...">
+          Dev <span className="text-primary-500">Flow</span>
+        </p>
+      </Link>
+      <p>Global Search</p>
+      <div className="flex-between gap-5">
+        <ModeToggle />   {/* ← 只有这一小块 JS 会被打包下发 */}
+      </div>
     </nav>
   );
-}
+};
+
+export default Navbar;
 ```
+
+> 注意 `components/DarkMode.tsx` 才是 `"use client"` 的那一端，Navbar 本身是服务端组件。
 
 **原则：把 `"use client"` 尽可能推向叶子节点。** 一个组件标了 `"use client"`，它 import 的整棵子树都会被拖进浏览器包。
 
@@ -572,7 +605,7 @@ export default async function Home() {
 
 这就是 **PPR（Partial Prerendering）的基础形态**：`<h1>Home</h1>` 被静态直出，动态部分走独立 chunk 流式追加，用户不用等最慢的数据。
 
-> **`connection()` 是 Next 16 的新 API**：显式告诉框架「从这里开始依赖真实请求，别预渲染我」。过去靠读取 `cookies()` / `headers()` 隐式触发动态渲染，现在有了显式的表达手段。
+> **`connection()` 是 Next 16 的稳定 API**（Next 15 时代以实验特性存在）：显式告诉框架「从这里开始依赖真实请求，别预渲染我」。过去靠读取 `cookies()` / `headers()` 隐式触发动态渲染，现在有了显式的表达手段。
 
 **层次三：三种边界的分工**
 
@@ -608,7 +641,7 @@ cacheLife({
 });
 ```
 
-预设值：`cacheLife("seconds" | "minutes" | "hours" | "days" | "weeks" | "max")`。
+预设值：`cacheLife("default" | "seconds" | "minutes" | "hours" | "days" | "weeks" | "max")`。
 
 **旧模型（Next 15 及以前）长什么样** —— 只做对照，**不要再用**：
 
@@ -731,7 +764,8 @@ export default function Login() {
 // export async function PUT(request: Request) { }
 // export async function DELETE(request: Request) { }
 // export async function PATCH(request: Request) { }
-// //如果没有定义OPTIONS方法，则Next.js会自动实现OPTIONS方法
+// //实测：未定义 OPTIONS 时，Next 16 返回 405 Method Not Allowed（带 Allow 头），
+// //      并不会自动补一个 204 —— 需要处理预检就自己手写 OPTIONS
 ```
 
 **请求解析四种姿势**（`api/user/route.ts`）：
@@ -787,7 +821,25 @@ export async function POST(request: NextRequest) {
 
 ### 4.11 proxy.ts：Next 16 的破坏性变更（重点）
 
-**Next 16 官方已把 `middleware.ts` 重命名为 `proxy.ts`**，函数导出从 `middleware` 改为 `proxy`，配置类型从 `MiddlewareConfig` 改为 `ProxyConfig`。（官方文档原话：*"The middleware file convention is deprecated and has been renamed to proxy."*）
+**Next 16 官方已把 `middleware.ts` 重命名为 `proxy.ts`**，函数导出从 `middleware` 改为 `proxy`，
+配置类型从 `MiddlewareConfig` 改为 `ProxyConfig`（两者仍都从 `next/server` 导出，新代码用 `ProxyConfig`）。
+
+构建时若检测到 `middleware.ts`，Next 16.3.8 会打印这段**逐字警告**：
+
+```text
+The "middleware" file convention is deprecated. Please use "proxy" instead.
+
+  To migrate automatically, run:
+  npx @next/codemod@canary middleware-to-proxy .
+
+  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+```
+
+> 同时存在 `middleware.ts` 与 `proxy.ts` 时，**构建直接失败**（实测原文）：
+> ```text
+> Both middleware file "./middleware.ts" and proxy file "./proxy.ts" are detected.
+> Please use "./proxy.ts" only. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+> ```
 
 ```ts
 // proxy.ts —— Next 16 新写法
@@ -813,6 +865,15 @@ export const config: ProxyConfig = {
   // matcher 写法三选一：单条 / 数组 / 负向前瞻正则
   // matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
 };
+```
+
+**Next 16 与 proxy 相关的三个新配置**（都在 `experimental` 下）：
+
+| 配置 | 作用 |
+|---|---|
+| `experimental.proxyPrefetch` | 让 proxy 参与 `<Link>` 预取请求的处理 |
+| `experimental.proxyTimeout` | proxy 的最长执行时间 |
+| `experimental.proxyClientMaxBodySize` | proxy 读客户端请求体的上限 |
 ```
 
 **`matcher` 的三种写法**：
@@ -987,15 +1048,16 @@ export function useMDXComponents(): MDXComponents {
 // app/mycache/CachedPart.tsx —— 缓存侧
 async function getCachedName() {
   "use cache";                 // ← 指令必须在函数体第一行
-  cacheLife("hours");          // 预设：seconds|minutes|hours|days|weeks|max
+  cacheLife("hours");          // 预设：default|seconds|minutes|hours|days|weeks|max
   cacheTag("mycache-demo");    // 打标签，供 revalidateTag 精准失效
-  return { name: `随机名字-${Math.random().toString(36).slice(2, 8)}` };
+  return { name: `随机名字-${Math.random().toString(36).slice(2, 8)}`, at: Date.now() };
 }
 
 // app/mycache/DynamicPart.tsx —— 动态侧
 export default async function DynamicPart() {
   await connection();          // ← 显式声明「这段不要预渲染」
-  return <div>{Math.random()}</div>;
+  const name = `随机名字-${Math.random().toString(36).slice(2, 8)}`;
+  return (<div>…名称：{name}…</div>);
 }
 ```
 
@@ -1102,7 +1164,7 @@ async function handleSubmit(formData: FormData) {
 - `useOptimistic` —— 服务端结果回来之前先渲染「预计状态」，到达后 React 自动丢弃乐观值。
   约束：必须在 Action / Transition 内部调用。
 - `useFormStatus` —— 只负责读父级 form 的 pending 状态。
-  **必须写在 form 的子组件里**（本项目拆成 `SubmitButton.tsx`），写在 form 所在组件里永远拿到 `false`。
+  **必须写在 form 的子组件里**（本项目拆成 `app/(root)/optimistic/SubmitButton.tsx`），写在 form 所在组件里永远拿到 `false`。
 
 ### 4.20 拦截路由（Intercepting Routes）★ 新增
 
@@ -1222,7 +1284,7 @@ export default function Icon() {
 
 | 接口 | 演示内容 |
 |---|---|
-| `/api/cors` | 手写 `OPTIONS` 预检 + 动态白名单 Origin。**不写 OPTIONS 时 Next 会自动补一个 204，但不带 CORS 头，浏览器照样拦截** |
+| `/api/cors` | 手写 `OPTIONS` 预检 + 动态白名单 Origin。**实测：不写 OPTIONS 时 Next 16 返回 405 Method Not Allowed（带 `Allow` 头），既不是预检该有的 2xx，也不带 CORS 头，浏览器照样拦截** |
 | `/api/redirect` | `NextResponse.redirect`（地址栏变） vs `NextResponse.rewrite`（地址栏不变，内部改写） |
 | `/api/cookies` | `response.cookies.set()` 写 Cookie，含 `httpOnly` / `secure` / `sameSite` / `maxAge`；另加 `export const maxDuration = 30` |
 
@@ -1424,18 +1486,18 @@ export default nextConfig;
 
 ## 七、架构师 Review：已知问题与 TODO
 
-以下是 14 点真实缺陷清单（含反模式、待办与本轮已修复项）。
+以下是 15 点真实缺陷清单（含反模式、待办与本轮已修复项）。
 
 | # | 问题 | 位置 | 严重度 | 修复建议 |
 |---|---|---|---|---|
 | 1 | 鉴权只有手写 Cookie 一套 | `api/login` | 🟡 中 | 生产统一用 Clerk 等成熟方案。Clerk 的备份文件（`proxyBackup.ts`/`layoutBackup.tsx`）本轮已清理，只留依赖与 `/sign-in` 占位路由 |
 | 2 | `proxy.ts` 曾残留 Next 15 写法 `export { auth as middleware }` | `proxy.ts` | ✅ 已修复 | 已删除该行，仅保留具名 `proxy` 导出 |
-| 3 | `(dashboard)/dashboard/users/[id]` 用相对路径 `fetch('/app/blog/1')` | `users/[id]/page.tsx` | 🔴 高 | 服务端 fetch 无 base，必须用绝对 URL 或内部 import |
+| 3 | 首页若干 `<Link>` 指向**不存在的路由**（`/page`、`/xm`、`/daman`、`/page/1`），点进去直接 404 | `app/(root)/page.tsx` | 🟡 中 | 教学演示遗留。要么补对应路由，要么把链接指向真实页面 |
 | 4 | 客户端守卫写在 `useEffect` 里 `redirect()` | `(root)/home/page.tsx` | 🟡 中 | 改在 `proxy.ts`（请求级）或服务端 layout 鉴权 |
 | 5 | `server/page.tsx` 模块级 MySQL 连接池 + 硬编码凭据 + 相对路径读文件 | ~~`server/page.tsx`~~ | ✅ 已处理 | 该页与 `data.json` 均已移除（依赖 `mysql2` 也已卸载），§4.5 仅保留代码快照作反模式对照 |
 | 6 | `api/books/[id]` 的 `params` 未用 Promise 写法（旧版） | `api/books/[id]/route.ts` | ✅ 已修复 | 现为 `params: Promise<{id:string}>` + `await context.params` |
 | 7 | `api/chat` 与 `api/register` 改为占位 501 接口（非空文件） | `api/chat`、`api/register` | 🟢 低 | 按 5.2 补全对话接口，或保留占位 |
-| 8 | Clerk 依赖保留但仅作备份未接线 | `package.json` | 🟢 低 | 生产启用 Clerk（配 NEXT_PUBLIC_CLERK_*）或移除其依赖 |
+| 8 | Clerk 依赖保留但未接线（备份文件已清理，只剩 `/sign-in` 占位路由） | `package.json` | 🟢 低 | 生产启用 Clerk（配 NEXT_PUBLIC_CLERK_*）或移除其依赖 |
 | 9 | MDX 路由未真正启用（`pageExtensions` 注释） | `next.config.ts` | 🟢 低 | 需要 MDX 时取消注释并用 `withMDX()` 包裹 |
 | 10 | `components.json` 配了 `"hooks": "@/hooks"` 但无 `hooks/` 目录 | `components.json` | 🟢 低 | 创建 `hooks/` 或移除该别名 |
 
@@ -1447,6 +1509,7 @@ export default nextConfig;
 | 12 | `global-error.tsx` 没有输出 `<html><body>`，一旦触发根级错误页面全白 | `app/global-error.tsx` | ✅ 已修复 |
 | 13 | PPR 模式下页面里 `notFound()` 返回 HTTP **200**，404 页会被搜索引擎当正常页收录 | `app/(root)/notfound/page.tsx` | ⚠️ 已加对照实验 + Route Handler 正确写法（`app/api/notfound/route.ts`） |
 | 14 | `albums` 用 `export const dynamic` 强制动态，与 Cache Components 冲突 | `app/(root)/albums/page.tsx` | ✅ 已迁移为 `await connection()` |
+| 15 | `api/db.ts` 用**模块级数组**冒充数据库：进程重启即丢、多实例不共享、`PUT` 时 `books[index] = book` 未防 `index === -1` 越界 | `app/api/db.ts`、`app/api/books/[id]/route.ts` | 🔴 高 | 换成真实数据库；写入前校验 `index` 有效性 |
 
 **额外提示**：
 
@@ -1461,7 +1524,7 @@ export default nextConfig;
 
 | Day | 主题 | 动手实验 |
 |---|---|---|
-| 1 | **约定文件 + 路由组** | 跑 `/basic/a`、`/basic/b`，看 loading/error；删掉 `basic/default.tsx` 体会 404 |
+| 1 | **约定文件 + 路由组** | 跑 `/basic/a`、`/basic/b`，看 loading/error；删掉 `app/@team/default.tsx` 体会 slot 兜底消失 |
 | 2 | **平行路由** | 对比 `@team/page.tsx` 与 `@team/default.tsx`；删 default 看软/硬导航差异 |
 | 3 | **动态路由三兄弟** | 访问 `/slug/foo`、`/slug/a/b`、`/slugs`、`/slugs/a/b`，打印 `useParams()` |
 | 4 | **RSC vs Client** | 看 `client`/`server`/`serveronly` 控制台输出；让客户端 import `serveronly` 看构建失败 |

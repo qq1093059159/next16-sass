@@ -10,7 +10,8 @@
 
 // export async function PATCH(request: Request) { }
 
-// //如果没有定义OPTIONS方法，则Next.js会自动实现OPTIONS方法
+// //实测：未定义 OPTIONS 时 Next 16 返回 405 Method Not Allowed（带 Allow 头），
+// //      并不会自动补一个 204 —— 需要处理预检就自己手写 OPTIONS
 // export async function OPTIONS(request: Request) { }
 import { cookies } from "next/headers"; //引入cookies
 import { NextRequest, NextResponse } from "next/server"; //引入NextRequest, NextResponse

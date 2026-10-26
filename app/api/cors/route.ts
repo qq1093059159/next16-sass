@@ -7,8 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
  *  1. 跨域请求分「简单请求」和「预检请求」：
  *     带 Content-Type: application/json 的 POST 属于简单请求之外，
  *     浏览器会先发一个 OPTIONS 预检请求，问服务器「我能不能发这个请求」。
- *  2. 没有显式导出 OPTIONS 时，Next 会自动返回一个 204，但【不带 CORS 头】，
- *     浏览器照样会拦截 —— 所以必须手写 OPTIONS。
+ *  2. 没有显式导出 OPTIONS 时，Next 16 实测返回 405 Method Not Allowed（带 Allow 头），
+ *     既不是预检该有的 2xx，也不带 CORS 头，浏览器照样会拦截 —— 所以必须手写 OPTIONS。
  *  3. Access-Control-Allow-Origin 不能是 "*"（当需要 Cookie 时）。
  */
 
