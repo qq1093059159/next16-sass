@@ -3,6 +3,7 @@
 > **学习目标**：掌握 `metadata` / `generateMetadata` / `viewport`，以及六个 SEO 约定文件。
 > **对应代码**：`app/(root)/seo/page.tsx`、`app/sitemap.ts`、`app/robots.ts`、`app/manifest.ts`、`app/icon.tsx`、`app/opengraph-image.tsx`
 > **预计耗时**：40 分钟
+> **前置知识**：第 02 课
 
 ---
 
@@ -69,6 +70,8 @@ export default function SeoPage() {
 ```
 
 **`title` 的两种写法**：
+
+> 下面是**两种写法的示意**：
 
 ```tsx
 title: "固定标题"                    // 就是这个
@@ -176,7 +179,11 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#000000",
     orientation: "portrait",
     icons: [
-      { src: "/favicon.ico", sizes: "any", type: "image/x-icon" },
+      {
+        src: "/favicon.ico",
+        sizes: "any",
+        type: "image/x-icon",
+      },
     ],
   };
 }

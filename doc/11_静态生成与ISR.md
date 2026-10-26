@@ -3,6 +3,7 @@
 > **学习目标**：掌握 `generateStaticParams` 与 `cacheLife` 如何组合出「静态生成 + 增量静态再生」。
 > **对应代码**：`app/(root)/ssg/[id]/page.tsx`、`app/(root)/ssg/page.tsx`
 > **预计耗时**：35 分钟
+> **前置知识**：第 10 课
 
 ---
 

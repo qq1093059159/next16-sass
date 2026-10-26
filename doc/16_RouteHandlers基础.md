@@ -3,6 +3,7 @@
 > **学习目标**：掌握 `app/api/**/route.ts` 这套与页面平行的 API 入口。
 > **对应代码**：`app/api/user/route.ts`、`app/api/books/route.ts`、`app/api/books/[id]/route.ts`
 > **预计耗时**：35 分钟
+> **前置知识**：第 02 课
 
 ---
 
@@ -18,14 +19,25 @@ app/api/user/route.ts       →  API 路由，URL = /api/user
 一个 `route.ts` 可以导出多个 HTTP 方法：
 
 ```ts
-export async function GET(request: Request) { }
-export async function HEAD(request: Request) { }
-export async function POST(request: Request) { }
-export async function PUT(request: Request) { }
-export async function PATCH(request: Request) { }
-export async function DELETE(request: Request) { }
-export async function OPTIONS(request: Request) { }
+// export async function GET(request: Request) { }
+
+// export async function HEAD(request: Request) { }
+
+// export async function POST(request: Request) { }
+
+// export async function PUT(request: Request) { }
+
+// export async function DELETE(request: Request) { }
+
+// export async function PATCH(request: Request) { }
+
+// //实测：未定义 OPTIONS 时，Next 16 返回 405 Method Not Allowed（带 Allow 头），
+// //      并不会自动补一个 204 —— 需要处理预检就自己手写 OPTIONS
+// export async function OPTIONS(request: Request) { }
 ```
+
+> 这是 `app/api/login/route.ts` 开头的**注释备忘**（该文件只实现了 POST 与 GET）。
+> 真正要导出哪个方法，就把对应那行的 `//` 去掉。
 
 > ⚠️ **实测结论**：**不定义 `OPTIONS` 时，Next 16 返回 `405 Method Not Allowed`**
 > （带 `Allow: GET, HEAD` 头），**并不会自动补一个 204**。

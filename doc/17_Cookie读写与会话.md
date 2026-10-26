@@ -3,6 +3,7 @@
 > **学习目标**：掌握两种 Cookie 写法，以及 httpOnly / secure / sameSite 三个安全选项的意义。
 > **对应代码**：`app/api/login/route.ts`、`app/api/cookies/route.ts`
 > **预计耗时**：30 分钟
+> **前置知识**：第 16 课
 
 ---
 

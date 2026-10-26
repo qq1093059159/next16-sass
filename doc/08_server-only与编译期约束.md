@@ -3,6 +3,7 @@
 > **学习目标**：学会用编译期约束把「不该跨边界的东西」锁死在服务端。
 > **对应代码**：`app/serveronly/page.tsx`
 > **预计耗时**：20 分钟
+> **前置知识**：第 07 课
 
 ---
 
@@ -57,6 +58,8 @@ export default function ServerOnlyPage() {
 
 给「只能跑在服务端」的模块加上这行：
 
+> 下面是**典型用法示意**，不是仓库里的代码：
+
 ```ts
 // lib/db.ts
 import "server-only";
@@ -69,6 +72,7 @@ export const db = new PrismaClient();
 
 同理：
 
+> 下面是**密钥模块的典型用法示意**，不是仓库里的代码：
 ```ts
 // lib/secrets.ts
 import "server-only";

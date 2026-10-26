@@ -3,6 +3,7 @@
 > **学习目标**：看懂「传统 fetch → Server Action → useActionState + Zod」这条演进链，理解每一步省掉了什么。
 > **对应代码**：`app/(auth)/mylogin/`、`app/(auth)/serverlogin/`、`app/(auth)/serverzodlogin/`、`lib/actions.ts`
 > **预计耗时**：50 分钟
+> **前置知识**：第 02 课
 
 ---
 
@@ -240,6 +241,8 @@ export default function Login() {
 
 ### 4.3 `useActionState` 的三件套
 
+> 下面是**用法示意**（实际代码在上方 `serverzodlogin/page.tsx` 里）：
+
 ```tsx
 const [state, formAction, isPending] = useActionState(handleLogin, initialState);
 ```
@@ -253,6 +256,8 @@ const [state, formAction, isPending] = useActionState(handleLogin, initialState)
 配合 `initialState`，`state` 的类型 = action 的返回类型 —— **类型契约清晰**。
 
 ### 4.4 Zod 4 的新 API
+
+> 下面是**用法示意**（实际代码在上方 `lib/actions.ts` 里）：
 
 ```ts
 z.treeifyError(result.error).properties

@@ -3,6 +3,7 @@
 > **学习目标**：掌握 Next 16 的新缓存模型 —— 用 `"use cache"` 声明缓存、用 `connection()` 声明动态，理解它为什么取代了旧的段级配置。
 > **对应代码**：`next.config.ts`、`app/mycache/`、`app/(root)/ssg/[id]/page.tsx`
 > **预计耗时**：50 分钟
+> **前置知识**：第 09 课
 
 ---
 
@@ -202,11 +203,7 @@ export default async function DynamicPart() {
 
 ```tsx
 "use cache";
-cacheLife({
-  stale: 30,      // 客户端可无网络验证地使用 30s（不发请求直接用）
-  revalidate: 60, // 服务端 60s 内可返回旧值，但后台重算
-  expire: 3600,   // 硬过期：超过 1h 必须重新计算
-});
+cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
 ```
 
 类比 Cache-Control：`max-age=stale`、`s-max-age=revalidate`、
@@ -220,6 +217,7 @@ cacheLife({
 
 **预设档位**（Next 16.3.8 实测）：
 
+> 下面是**类型签名的示意写法**（实际是 TS 重载声明，见 `node_modules/next/cache.d.ts`）：
 ```ts
 cacheLife("default" | "seconds" | "minutes" | "hours" | "days" | "weeks" | "max");
 ```

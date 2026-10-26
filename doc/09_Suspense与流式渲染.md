@@ -3,6 +3,7 @@
 > **学习目标**：搞懂 `loading.tsx` 与 `<Suspense>` 的关系，以及 PPR（部分预渲染）是怎么把首屏变快的。
 > **对应代码**：`app/basic/loading.tsx`、`app/basic/a/page.tsx`、`app/mysuspense/page.tsx`、`app/loading.tsx`
 > **预计耗时**：35 分钟
+> **前置知识**：第 02 课
 
 ---
 
@@ -31,6 +32,8 @@ export default function Loading() {
 ```
 
 框架会自动把整个段包成：
+
+> 下面是**伪码**，说明 `loading.tsx` 被框架展开后的等价结构（仓库里没有这段代码）：
 
 ```tsx
 <Suspense fallback={<Loading />}>
@@ -142,6 +145,7 @@ export default async function Home() {
 > 显式告诉框架「从这里开始依赖真实请求，别预渲染我」。
 > 过去靠读取 `cookies()` / `headers()` 隐式触发动态渲染，现在有了显式的表达手段。
 
+> 下面是**最小示意**（与本仓库 `app/mysuspense/page.tsx` 同款写法）：
 ```tsx
 import { connection } from "next/server";
 

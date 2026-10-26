@@ -3,6 +3,7 @@
 > **学习目标**：用 `ReadableStream` 在 Route Handler 里做逐块推送，并搞清「流式为什么不能缓存」。
 > **对应代码**：`app/api/stream/route.ts`、`app/(root)/stream/page.tsx`
 > **预计耗时**：30 分钟
+> **前置知识**：第 16 课
 
 ---
 
@@ -113,16 +114,27 @@ export default function StreamPage() {
     <div className="mx-auto max-w-2xl p-6">
       <h1>流式响应 · Route Handler + ReadableStream</h1>
       <div className="mt-4 flex gap-2">
-        <button onClick={start} disabled={running}>
+        <button
+          onClick={start}
+          disabled={running}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
           开始
         </button>
-        <button onClick={stop} disabled={!running}>
+        <button
+          onClick={stop}
+          disabled={!running}
+          className="rounded-md border border-gray-300 px-4 py-2 text-sm dark:border-gray-700"
+        >
           中断
         </button>
       </div>
+
       <ul className="mt-4 flex flex-col gap-1 font-mono text-sm">
         {lines.map((line, i) => (
-          <li key={i}>{line}</li>
+          <li key={i} className="rounded bg-gray-100 px-2 py-1 dark:bg-gray-800">
+            {line}
+          </li>
         ))}
       </ul>
     </div>

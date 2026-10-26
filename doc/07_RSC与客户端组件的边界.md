@@ -3,6 +3,7 @@
 > **学习目标**：搞清楚「代码到底跑在服务端还是浏览器」，以及怎么用「服务端壳 + 客户端岛」把 JS 体积压到最小。
 > **对应代码**：`app/client/page.tsx`、`app/serveronly/page.tsx`、`components/navigation/navbar/index.tsx`、`components/DarkMode.tsx`
 > **预计耗时**：45 分钟
+> **前置知识**：第 01、02 课
 
 ---
 

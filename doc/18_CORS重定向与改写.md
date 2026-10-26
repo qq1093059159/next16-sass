@@ -3,6 +3,7 @@
 > **学习目标**：搞懂浏览器跨域预检的真实流程，以及 `redirect` 和 `rewrite` 的本质区别。
 > **对应代码**：`app/api/cors/route.ts`、`app/api/redirect/route.ts`
 > **预计耗时**：35 分钟
+> **前置知识**：第 16 课
 
 ---
 

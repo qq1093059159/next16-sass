@@ -3,6 +3,7 @@
 > **学习目标**：亲眼看清 `layout` 与 `template` 在**重挂载时机**上的唯一区别，并用这个区别指导实际选型。
 > **对应代码**：`app/basic/layout.tsx`、`app/basic/template.tsx`、`app/basic/a/page.tsx`、`app/basic/b/page.tsx`
 > **预计耗时**：30 分钟
+> **前置知识**：第 02 课
 
 ---
 

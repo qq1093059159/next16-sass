@@ -3,6 +3,7 @@
 > **学习目标**：掌握 `Link` 与 `useRouter` 的分工，以及五个导航 Hook 的用法与约束。
 > **对应代码**：`app/(root)/page.tsx`、`app/(root)/hooks/page.tsx`、`app/(root)/hooks/HooksClient.tsx`
 > **预计耗时**：40 分钟
+> **前置知识**：第 07 课
 
 ---
 
@@ -30,12 +31,20 @@ export default function Home() {
       <Link href={{ pathname: "/about", query: { name: "张三" } }}>
         跳转About并且传入参数
       </Link>
-      <Link href="/page" prefetch={true}>预获取page页面</Link>
-      <Link href="/xm" scroll={true}>保持滚动位置</Link>
-      <Link href="/daman" replace={true}>替换当前页面</Link>
+      <Link href="/page" prefetch={true}>
+        预获取page页面
+      </Link>
+      <Link href="/xm" scroll={true}>
+        保持滚动位置
+      </Link>
+      <Link href="/daman" replace={true}>
+        替换当前页面
+      </Link>
 
       {arr.map((item) => (
-        <Link key={item} href={`/page/${item}`}>动态渲染的Link{item}</Link>
+        <Link key={item} href={`/page/${item}`}>
+          动态渲染的Link{item}
+        </Link>
       ))}
 
       <button onClick={() => router.push("/page")}>跳转page页面</button>
@@ -43,7 +52,9 @@ export default function Home() {
       <button onClick={() => router.back()}>返回上一页</button>
       <button onClick={() => router.forward()}>跳转下一页</button>
       <button onClick={() => router.refresh()}>刷新当前页面</button>
-      <button onClick={() => router.prefetch("/about")}>预获取about页面</button>
+      <button onClick={() => router.prefetch("/about")}>
+        预获取about页面
+      </button>
 
       <Script src="https://unpkg.com/vue@3/dist/vue.global.js" />
     </div>
@@ -76,6 +87,8 @@ export default function Home() {
 | `prefetch(url)` | 手动预取 |
 
 ### 1.4 `next/script` 的四种加载策略
+
+> 下面是**四种策略的写法示意**（本仓库只用了默认的 `afterInteractive`）：
 
 ```tsx
 <Script src="..." strategy="beforeInteractive" />  {/* 必须在 hydration 前 */}

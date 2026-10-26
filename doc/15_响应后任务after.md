@@ -3,12 +3,15 @@
 > **学习目标**：学会把「埋点、日志、清理」这类不必让用户等待的工作，挪到响应发出之后再执行。
 > **对应代码**：`app/(root)/after/page.tsx`
 > **预计耗时**：20 分钟
+> **前置知识**：第 09 课
 
 ---
 
 ## 一、核心概念
 
 `after()` 让你在**响应已经发给用户之后**再执行一段逻辑。
+
+> 下面是**最小示意**（与本仓库 `app/(root)/after/page.tsx` 同款写法）：
 
 ```tsx
 import { after } from "next/server";
@@ -56,7 +59,7 @@ export default function AfterPage() {
     <div className="mx-auto max-w-2xl p-6">
       <h1>响应后任务 · after()</h1>
       <p className="mt-2 text-sm opacity-70">
-        打开这个页面的【服务端终端】看日志：页面内容早已返回，但日志会在稍后才出现。
+        打开这个页面的服务端终端看日志：页面内容早已返回，但日志会在稍后才出现。
       </p>
     </div>
   );
@@ -91,6 +94,8 @@ console.log("[同步] 等了 2 秒才继续");
 **观察**：页面**等了 2 秒**才显示内容。**改回来**。
 
 ### 实验 3：在 Route Handler 里用
+
+> 下面是**实验用的临时路由**，需要你新建一个文件才能跑：
 
 ```ts
 import { after } from "next/server";

@@ -3,6 +3,7 @@
 > **学习目标**：掌握 Next 16 重命名后的中间件约定文件，以及服务启动/错误监控钩子。
 > **对应代码**：`proxy.ts`、`app/instrumentation.ts`
 > **预计耗时**：35 分钟
+> **前置知识**：第 16 课
 
 ---
 
@@ -159,6 +160,8 @@ export const onRequestError: InstrumentationOnRequestError = (
 | `onRequestError(error, request, context)` | 服务端出错时 | 统一错误上报 |
 
 `onRequestError` 的 `context` 里能拿到：
+
+> 下面是**逐字摘自** `node_modules/next/dist/server/instrumentation/types.d.ts` 的类型定义：
 
 ```ts
 type RequestErrorContext = {
