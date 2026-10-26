@@ -152,7 +152,6 @@ next16-sass/
 │   ├── not-found.tsx           ← 404
 │   ├── global-error.tsx        ← 全局错误边界（会替换根 layout）
 │   ├── globals.css             ← Tailwind v4 CSS-first 配置 ★
-│   ├── layoutBackup.tsx        ← 【非活跃】Clerk Provider 示例
 │   │
 │   ├── (auth)/                 ← 路由组：登录演示（不进 URL）
 │   │   ├── mylogin/            · 传统 fetch('/api/login') + router.push
@@ -174,7 +173,6 @@ next16-sass/
 │   │   ├── albums/             · async RSC 直接 fetch
 │   │   ├── books/              · RSC 调用自己的 Route Handler
 │   │   ├── sign-in/[[...sign-in]]/ · 可选 catch-all（Clerk）
-│   │   └── pageBackup.tsx      · 【非活跃】Clerk auth()/currentUser()
 │   │
 │   ├── @analytics/             ← 平行路由 slot ←┐
 │   │   ├── page.tsx                             ├ page 与 default 必须成对
@@ -202,7 +200,7 @@ next16-sass/
 │   │   ├── template.tsx        · 状态归零（切路由重挂载）★对照组
 │   │   ├── loading.tsx  error.tsx
 │   │   ├── a/  b/              · a 慢 5s 触发 loading；b 立即返回
-│   │   └── redirect.tsx  permanentRedirect.tsx · 全注释文档
+│   │   └── （redirect / permanentRedirect 已移入 §4.x 讲解，见 notFound 对照）
 │   │
 │   ├── client/                 · "use client" 执行时机实验
 │   ├── serveronly/             · server-only 编译期约束
@@ -237,7 +235,7 @@ next16-sass/
 │
 ├── components/
 │   ├── DarkMode.tsx            · next-themes + shadcn Dropdown
-│   ├── MyComponent.tsx         · "use cache" 指令占位 demo
+│   ├── mycache/                · "use cache" 真实示例（见 app/mycache/）
 │   ├── navigation/navbar/      · 服务端壳包客户端岛 ★最佳实践形态
 │   └── ui/                     · shadcn: button / input / dropdown-menu
 ├── lib/
@@ -248,9 +246,7 @@ next16-sass/
 │   └── utils.ts                · cn() = clsx + tailwind-merge
 ├── context/Theme.tsx           · next-themes Provider 二次封装
 ├── proxy.ts                    ← Next 16 新命名（原 middleware.ts）★
-├── proxyBackup.ts              · 【非活跃】Clerk middleware
 ├── mdx-components.tsx          · MDX 全局组件映射约定
-├── data.json                   · 本地示例数据（原 `/server` 页读取，该页已移除）
 └── api.http                    · REST Client 调试草稿
 ```
 
@@ -485,12 +481,14 @@ const pool = mysql.createPool({
 });
 export default async function ServerPage() {
   const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM goods");
-  const data = fs.readFileSync("data.json", "utf-8");
+  const data = fs.readFileSync("./data.json", "utf-8");   // ← 该文件已随本页一并移除
   // ...
 }
 ```
 
-> ⚠️ 两个反模式，生产禁用：① 连接池写在模块顶层且硬编码凭据；② `fs.readFileSync("data.json")` 用相对路径，依赖进程 CWD —— 部署到 Serverless/容器环境会直接失败。
+> ⚠️ 两个反模式，生产禁用：① 连接池写在模块顶层且硬编码凭据；② `fs.readFileSync("./data.json")` 用相对路径，依赖进程 CWD —— 部署到 Serverless/容器环境会直接失败。
+>
+> 本页与它读取的 `data.json` 都已移除；这里保留代码快照，作为「反模式对照」存档。
 
 **证据三：`serveronly/page.tsx` —— 编译期就把误用打死**
 
@@ -790,7 +788,7 @@ export async function POST(request: NextRequest) {
 | 方案 | 文件 | 状态 | 说明 |
 |---|---|---|---|
 | **手写 Cookie** | `api/login/route.ts` + `(root)/home` | ✅ 可用(演示级) | token 硬编码 `'123456'`，仅演示流程 |
-| **Clerk** | `proxyBackup.ts`、`layoutBackup.tsx` | ❌ 未启用 | 纯备份，文件名刻意绕开约定 |
+| **Clerk** | `@clerk/nextjs` 依赖 + `/sign-in/[[...sign-in]]` | ⚠️ 占位 | 依赖保留但未接线（备份文件已清理，路由仅占位） |
 
 > 架构师建议：手写 Cookie 仅作流程演示，**生产务必换成 Clerk 等成熟方案**，并移除本仓库已删除的 Auth.js 相关代码。详见[第七章 #1](#七架构师-review已知问题与-todo)。
 
@@ -1437,11 +1435,11 @@ export default nextConfig;
 
 | # | 问题 | 位置 | 严重度 | 修复建议 |
 |---|---|---|---|---|
-| 1 | 鉴权双方案并存（手写 Cookie / Clerk 备份） | `api/login`、`proxyBackup.ts` | 🟡 中 | 生产统一用 Clerk，移除手写 Cookie 演示或正式启用 Clerk |
+| 1 | 鉴权只有手写 Cookie 一套 | `api/login` | 🟡 中 | 生产统一用 Clerk 等成熟方案。Clerk 的备份文件（`proxyBackup.ts`/`layoutBackup.tsx`）本轮已清理，只留依赖与 `/sign-in` 占位路由 |
 | 2 | `proxy.ts` 曾残留 Next 15 写法 `export { auth as middleware }` | `proxy.ts` | ✅ 已修复 | 已删除该行，仅保留具名 `proxy` 导出 |
 | 3 | `(dashboard)/dashboard/users/[id]` 用相对路径 `fetch('/app/blog/1')` | `users/[id]/page.tsx` | 🔴 高 | 服务端 fetch 无 base，必须用绝对 URL 或内部 import |
 | 4 | 客户端守卫写在 `useEffect` 里 `redirect()` | `(root)/home/page.tsx` | 🟡 中 | 改在 `proxy.ts`（请求级）或服务端 layout 鉴权 |
-| 5 | `server/page.tsx` 模块级 MySQL 连接池 + 硬编码凭据 + 相对路径读文件 | ~~`server/page.tsx`~~ | ✅ 已处理 | 该页已移除（依赖 `mysql2` 也已卸载），`data.json` 仍在仓库里 |
+| 5 | `server/page.tsx` 模块级 MySQL 连接池 + 硬编码凭据 + 相对路径读文件 | ~~`server/page.tsx`~~ | ✅ 已处理 | 该页与 `data.json` 均已移除（依赖 `mysql2` 也已卸载），§4.5 仅保留代码快照作反模式对照 |
 | 6 | `api/books/[id]` 的 `params` 未用 Promise 写法（旧版） | `api/books/[id]/route.ts` | ✅ 已修复 | 现为 `params: Promise<{id:string}>` + `await context.params` |
 | 7 | `api/chat` 与 `api/register` 改为占位 501 接口（非空文件） | `api/chat`、`api/register` | 🟢 低 | 按 5.2 补全对话接口，或保留占位 |
 | 8 | Clerk 依赖保留但仅作备份未接线 | `package.json` | 🟢 低 | 生产启用 Clerk（配 NEXT_PUBLIC_CLERK_*）或移除其依赖 |
@@ -1460,7 +1458,7 @@ export default nextConfig;
 **额外提示**：
 
 - 拦截路由**已补齐**：`app/(root)/intercepting/@modal/(.)photo/[id]`（见 [4.20](#420-拦截路由intercepting-routes--新增)）
-- `MyComponent.tsx` 的 `"use cache"` 现在**已生效**（`cacheComponents: true`）
+- `"use cache"` 已**全面生效**（`cacheComponents: true`），真实示例见 `app/mycache/CachedPart.tsx`；原占位组件 `components/MyComponent.tsx` 已删除
 - `generateStaticParams` / `revalidatePath` / `revalidateTag` / `updateTag` / `refresh` **均已补齐并实测通过**
 - 完整索引见运行时页面 [`/knowledge`](http://localhost:3000/knowledge)
 
