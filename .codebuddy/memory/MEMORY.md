@@ -1,7 +1,8 @@
 # 项目长期记忆 (MEMORY.md)
 
 ## 工作流约定（用户明确要求）
-- **每次改完工作区就主动 `git add` + `commit` + `push`**，不要等用户单独说 "git push" 才推。改动完成即同步远程，保持 `origin/main` 与工作区一致。
+- **每次改完工作区就主动 `git add` + `commit`**，不要等用户单独说才提交。
+- **但不要 `git push`** —— 2026-10-26 用户明确指示「不 push 了，本地做好即可」。本仓库的 remote 是 `https://qq1093059159@github.com/qq1093059159/next16-sass.git`，本机 Git Credential Manager 只存了另一个账号（非交互环境弹不出凭据框，用它推会得到 `Permission denied 403`）。**本地提交完成即视为交付完成，不要反复尝试 push。**
 - 提交范围按用户一贯偏好「全部提交」：包括文档、`.codebuddy/memory` 等项目内改动一并纳入，不留未提交项。
 - 用户允许直接执行命令（含风险操作），无需反复询问确认（见 always_applied_user_rules）。
 
