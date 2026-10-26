@@ -7,20 +7,58 @@
 
 ---
 
+## 项目速览（30 秒读完）
+
+> **一句话**：一个把 Next.js 16 App Router 全部核心机制跑一遍的**教学型仓库** —— 每个目录就是一个知识点的最小可运行样本，大量样本被刻意做成**两两对照组**，让你亲手体会差异，而不是读文档想象。
+
+| 维度 | 结论 |
+|---|---|
+| **是什么** | Next.js 16 特性地图 + 反模式对照表 + 实测踩坑清单 |
+| **不是什么** | ❌ 生产级 SaaS 模板 ❌ 最佳实践范本（代码里多处标注「仅供演示」） |
+| **技术底座** | Next.js 16.3.8 · React 19.3.0 · Tailwind v4 · TypeScript 5 · Turbopack |
+| **规模** | 60+ 路由目录 · 27 个知识点主题 · 59 个构建产物页面 |
+| **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
+| **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
+
+**目录骨架**（到分组为止，细节见[第三章](#三路由全景地图)）：
+
+```text
+app/
+├─ layout.tsx default.tsx loading.tsx not-found.tsx global-error.tsx globals.css
+├─ (auth)/ (dashboard)/ (root)/        ← 三个路由组（不进 URL）
+├─ @team/ @analytics/                  ← 两个平行路由 slot
+├─ api/                                ← 13 个 Route Handler
+├─ basic/ client/ serveronly/ mycache/ mysuspense/ myimage/ env/ mdx-page/
+├─ slug/ slugs/                        ← 动态路由三兄弟
+├─ (root)/ssg revalidate optimistic intercepting hooks after stream seo font knowledge
+├─ sitemap.ts robots.ts manifest.ts icon.tsx opengraph-image.tsx instrumentation.ts
+components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
+```
+
+**三层阅读路径**：
+
+| 层级 | 怎么用 | 耗时 |
+|---|---|---|
+| 1. 摸底 | 本速览 + 上表 | 30 秒 |
+| 2. 上手 | [第二章](#二5-分钟跑起来) 跑起来 → 点开 [`/knowledge`](http://localhost:3000/knowledge) 按知识点找代码 | 5 分钟 |
+| 3. 系统学 | [第四章](#四核心知识点详解) 27 个主题逐个拆解 | 按需 |
+
+---
+
 ## 目录导航
 
 | 章节 | 内容 | 适合谁 |
 |---|---|---|
+| [项目速览](#项目速览30-秒读完) | 30 秒读完整个项目：定位 · 骨架 · 三层阅读路径 | 所有人 |
 | [一、项目定位与技术栈](#一项目定位与技术栈) | 这仓库是什么、不是什么；依赖分层清单 | 所有人 |
-| [二、5 分钟跑起来](#二5-分钟跑起来) | 环境要求、启动、环境变量、MySQL、踩坑表 | 第一次 clone 的人 |
+| [二、5 分钟跑起来](#二5-分钟跑起来) | 环境要求、启动、环境变量、踩坑表 | 第一次 clone 的人 |
 | [三、路由全景地图](#三路由全景地图) | 目录树 + URL 对照表 + 三个对照组 | 想快速知道「去哪看什么」 |
 | [四、核心知识点详解](#四核心知识点详解) | **27 个主题**逐个拆解（**本文主体**） | 系统学习 App Router |
-| [五、AI 能力专区](#五ai-能力专区) | AI SDK 6 / DeepSeek 接线现状与补全方案 | 想接 AI 的人 |
+| [五、AI 能力专区](#五ai-能力专区ai-潮流达人视角) | AI SDK 6 / DeepSeek 接线现状与补全方案 | 想接 AI 的人 |
 | [六、next.config.ts 逐项拆解](#六nextconfigts-逐项拆解) | 每个配置项在干什么 | 配置调优 |
 | [七、架构师 Review：已知问题与 TODO](#七架构师-review已知问题与-todo) | 14 个真实缺陷清单（含已修复） | 想把它改造成生产基座 |
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
-| [九、速查附录](#九速查附录) | 约定文件表、初始化备忘、http 调试 | 日常查阅 |
-| [十、知识点补全总览](#十知识点补全总览) | 本轮补全清单 · 覆盖度对照 · 实测结论 | 想快速看改了什么 |
+| [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
 
 ---
 
@@ -28,7 +66,11 @@
 
 ### 1.1 它是什么
 
-一个 **"路由约定实验田"**。仓库用 30+ 个路由目录，把 App Router 的每一条约定文件规则、每一种路由符号、每一层缓存策略都做成了可运行样本。
+一个 **"路由约定实验田"**。仓库用 60+ 个路由目录，把 App Router 的每一条约定文件规则、每一种路由符号、每一层缓存策略都做成了可运行样本。
+
+> **本文档是本仓库唯一的项目说明文档。** 早前另有一份 `项目分析.md`（2026-09-15 的静态快照），
+> 其内容已被本文档完全覆盖且信息过时（如 Next 16.1.1、React 19.2.3、提及已移除的 mysql2 / next-auth），
+> 本轮已合并删除。
 
 ### 1.2 它不是什么
 
@@ -40,37 +82,16 @@
 
 ### 1.3 技术栈全景
 
-```text
-┌─ 运行时 ────────────────────────────────────────────────┐
-│  next 16.3.8   ·   react 19.3.0   ·   react-dom 19.3.0    │
-│  typescript 5  ·   eslint 9 (Flat Config)                │
-└──────────────────────────────────────────────────────────┘
-┌─ 编译 / 构建 ────────────────────────────────────────────┐
-│  Turbopack (dev 默认)  ·  SWC  ·  Babel React Compiler    │
-│  @tailwindcss/postcss 4 (CSS-first 配置)                  │
-└──────────────────────────────────────────────────────────┘
-┌─ 样式 / UI ──────────────────────────────────────────────┐
-│  tailwindcss 4  ·  @tailwindcss/typography                │
-│  tw-animate-css  ·  shadcn/ui (new-york / RSC)            │
-│  @radix-ui/react-slot  ·  @radix-ui/react-dropdown-menu   │
-│  class-variance-authority  ·  clsx  ·  tailwind-merge      │
-│  lucide-react  ·  next-themes (暗黑模式)                  │
-└──────────────────────────────────────────────────────────┘
-┌─ 数据 / 校验 ────────────────────────────────────────────┐
-│  zod 4.3                                                  │
-└──────────────────────────────────────────────────────────┘
-┌─ 鉴权 ──────────────────────────────────────────────────┐
-│  @clerk/nextjs 6.36  (备份方案，未接线)                   │
-└──────────────────────────────────────────────────────────┘
-┌─ AI ────────────────────────────────────────────────────┐
-│  ai 6.0  ·  @ai-sdk/react 3  ·  @ai-sdk/deepseek 2.0      │
-│  ⚠️ app/api/chat/route.ts 为占位 501（待实现），见第五章      │
-└──────────────────────────────────────────────────────────┘
-┌─ 内容 ──────────────────────────────────────────────────┐
-│  @next/mdx · @mdx-js/loader · @mdx-js/react               │
-│  next-mdx-remote-client · @types/mdx                      │
-└──────────────────────────────────────────────────────────┘
-```
+| 层 | 依赖 | 备注 |
+|---|---|---|
+| 运行时 | `next` 16.3.8 · `react` / `react-dom` 19.3.0 · `typescript` 5.9 | React Compiler 已开启 |
+| 构建 | Turbopack（dev 默认）· SWC · `@tailwindcss/postcss` 4 | Tailwind v4 **无** `tailwind.config.js` |
+| 样式 / UI | `tailwindcss` 4 · `tw-animate-css` · shadcn/ui(new-york/RSC) · `@radix-ui/react-*` · `cva` · `clsx` · `tailwind-merge` · `lucide-react` · `next-themes` | 暗黑模式基于 `next-themes` |
+| 数据 / 校验 | `zod` 4.3 | `z.treeifyError` 是 Zod 4 新 API |
+| 鉴权 | `@clerk/nextjs` 6.36 | ⚠️ 仅占位未接线，生产请换成熟方案 |
+| AI | `ai` 6.0 · `@ai-sdk/react` 3 · `@ai-sdk/deepseek` 2 | ⚠️ `app/api/chat` 是 501 占位，见[第五章](#五ai-能力专区ai-潮流达人视角) |
+| 内容 | `@next/mdx` · `@mdx-js/loader` · `@mdx-js/react` · `next-mdx-remote-client` | MDX 支持需在 `next.config.ts` 启用 |
+| 监控 | `@vercel/analytics` · `@vercel/speed-insights` | 已在根 layout 挂载 |
 
 ### 1.4 三个值得注意的版本信号
 
@@ -78,7 +99,7 @@
 |---|---|
 | **Next 16 + React 19.3** | 踩在最前沿。`"use server"` / `useActionState` / `useOptimistic` / Cache Components / PPR 全部是一等公民 |
 | **ESLint 9 Flat Config** | 用 `eslint.config.mjs` 而非 `.eslintrc`。Next 16 把 preset 拆成了 `core-web-vitals` 和 `typescript` 两个具名入口 |
-| **Tailwind v4** | **没有 `tailwind.config.js`**。全部配置搬进 `app/globals.css`，见 [4.13](#413-样式体系-tailwind-v4-css-first) |
+| **Tailwind v4** | **没有 `tailwind.config.js`**。全部配置搬进 `app/globals.css`，见 [4.13](#413-样式体系tailwind-v4-css-first) |
 
 ---
 
@@ -115,7 +136,7 @@ pnpm lint         # ESLint 检查
 新建 `.env.local`（仓库未提供，自行创建）：
 
 ```bash
-# ── Clerk（当前未接线，仅备份示例） ────────────────
+# ── Clerk（当前未接线，仅占位路由） ──────────────────
 # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
 # CLERK_SECRET_KEY=""
 
@@ -158,49 +179,46 @@ next16-sass/
 │   │   ├── serverlogin/        · Server Action + FormData + .bind()
 │   │   └── serverzodlogin/     · useActionState + Zod 校验 ★最推荐
 │   │
-│   ├── (dashboard)/            ← 路由组：后台（不进 URL）
-│   │   └── dashboard/
-│   │       ├── layout.tsx      · 嵌套布局
-│   │       ├── analytics/      · 普通路由（≠ @analytics slot！）
-│   │       └── users/[id]/     · 动态路由 + generateMetadata
+│   ├── (dashboard)/dashboard/  ← 路由组：后台（不进 URL）
+│   │   ├── layout.tsx          · 嵌套布局
+│   │   ├── analytics/          · 普通路由（≠ @analytics slot！）
+│   │   └── users/[id]/         · 动态路由 + generateMetadata
 │   │
 │   ├── (root)/                 ← 路由组：主站（接管根路径 /）
 │   │   ├── layout.tsx          · 挂载 Navbar
 │   │   ├── page.tsx            · 首页：Link / useRouter / Script 全家桶
 │   │   ├── error.tsx           · 段级错误边界
 │   │   ├── home/               · useEffect 客户端守卫（反模式）
-│   │   ├── about/              · 最简服务端组件
-│   │   ├── albums/             · async RSC 直接 fetch
-│   │   ├── books/              · RSC 调用自己的 Route Handler
-│   │   ├── sign-in/[[...sign-in]]/ · 可选 catch-all（Clerk）
+│   │   ├── about/ albums/ books/ sign-in/[[...sign-in]]/
+│   │   ├── ssg/[id]/           · generateStaticParams + ISR + cacheTag
+│   │   ├── revalidate/         · revalidatePath / revalidateTag / updateTag / refresh
+│   │   ├── optimistic/         · useOptimistic + useFormStatus（React 19）
+│   │   ├── intercepting/       · 拦截路由 @modal/(.)photo/[id] ★
+│   │   ├── hooks/              · usePathname / useSearchParams / useSelectedLayoutSegment(s)
+│   │   ├── after/              · after() 响应后任务
+│   │   ├── stream/             · SSE 客户端消费（ReadableStream）
+│   │   ├── seo/                · metadata / viewport 完整字段
+│   │   ├── font/               · next/font 字体优化
+│   │   ├── knowledge/          · ★ 知识点地图（全仓库索引）
+│   │   └── notfound/ notfound-dynamic/ · 404 状态码对照实验
 │   │
-│   ├── @analytics/             ← 平行路由 slot ←┐
-│   │   ├── page.tsx                             ├ page 与 default 必须成对
-│   │   └── default.tsx                          ←┘
-│   ├── @team/                  ← 平行路由 slot
-│   │   ├── page.tsx
-│   │   └── default.tsx
+│   ├── @team/ @analytics/      ← 平行路由 slot（page 与 default 必须成对）
 │   │
-│   ├── api/                    ← Route Handlers
+│   ├── api/                    ← 13 个 Route Handler
 │   │   ├── db.ts               · 内存假数据（模块级数组）
-│   │   ├── books/route.ts      · GET
-│   │   ├── books/[id]/route.ts · PUT / DELETE（旧 params 写法）
-│   │   ├── user/route.ts       · GET / POST（NextRequest 全解析）
-│   │   ├── user/[id]/route.ts  · GET（Promise params 新写法）
-│   │   ├── login/route.ts      · cookies() 读写 + httpOnly
-│   │   ├── chat/route.ts       · ⚠️ 空文件
-│   │   ├── register/route.ts   · ⚠️ 空文件
-│   │   ├── stream/route.ts     · SSE 流式响应
-│   │   ├── cors/route.ts       · OPTIONS 预检 + 动态 Origin
-│   │   ├── redirect/route.ts   · redirect vs rewrite
-│   │   └── cookies/route.ts    · response.cookies + maxDuration
+│   │   ├── books/ user/ login/ · 基础 CRUD + cookies 读写
+│   │   ├── stream/             · SSE 流式响应
+│   │   ├── cors/               · OPTIONS 预检 + 动态 Origin
+│   │   ├── redirect/           · redirect vs rewrite
+│   │   ├── cookies/            · response.cookies + maxDuration
+│   │   ├── notfound/           · 显式返回 404（状态码可控）
+│   │   └── chat/ register/     · ⚠️ 501 占位，待接线（见第五章）
 │   │
 │   ├── basic/                  ← 约定文件实验室
 │   │   ├── layout.tsx          · 状态保持（切路由不重置）
 │   │   ├── template.tsx        · 状态归零（切路由重挂载）★对照组
 │   │   ├── loading.tsx  error.tsx
-│   │   ├── a/  b/              · a 慢 5s 触发 loading；b 立即返回
-│   │   └── （redirect / permanentRedirect 已移入 §4.x 讲解，见 notFound 对照）
+│   │   └── a/  b/              · a 慢 5s 触发 loading；b 立即返回
 │   │
 │   ├── client/                 · "use client" 执行时机实验
 │   ├── serveronly/             · server-only 编译期约束
@@ -213,35 +231,16 @@ next16-sass/
 │   ├── slug/[...id]/           · catch-all
 │   ├── slugs/[[...id]]/        · 可选 catch-all
 │   │
-│   ├── (root)/ssg/[id]/        · generateStaticParams + ISR + cacheTag
-│   ├── (root)/revalidate/      · revalidatePath / revalidateTag / updateTag / refresh
-│   ├── (root)/optimistic/      · useOptimistic + useFormStatus（React 19）
-│   ├── (root)/intercepting/    · 拦截路由 @modal/(.)photo/[id] ★
-│   ├── (root)/hooks/           · usePathname / useSearchParams / useSelectedLayoutSegment(s)
-│   ├── (root)/after/           · after() 响应后任务
-│   ├── (root)/stream/          · SSE 客户端消费（ReadableStream）
-│   ├── (root)/seo/             · metadata / viewport 完整字段
-│   ├── (root)/font/            · next/font 字体优化
-│   ├── (root)/knowledge/       · ★ 知识点地图（全仓库索引）
-│   ├── (root)/notfound/        · 坑点 A：预渲染页 notFound() → 200
-│   ├── (root)/notfound-dynamic/· 坑点 B：动态页 notFound() → 真 404
-│   │
-│   ├── sitemap.ts              · → /sitemap.xml
-│   ├── robots.ts               · → /robots.txt
-│   ├── manifest.ts             · → /manifest.webmanifest
-│   ├── icon.tsx                · → /icon（ImageResponse 动态 PNG）
-│   ├── opengraph-image.tsx     · → /opengraph-image（动态分享图）
+│   ├── sitemap.ts robots.ts manifest.ts icon.tsx opengraph-image.tsx
 │   └── instrumentation.ts      · register() + onRequestError()
-│
 ├── components/
 │   ├── DarkMode.tsx            · next-themes + shadcn Dropdown
-│   ├── mycache/                · "use cache" 真实示例（见 app/mycache/）
 │   ├── navigation/navbar/      · 服务端壳包客户端岛 ★最佳实践形态
 │   └── ui/                     · shadcn: button / input / dropdown-menu
 ├── lib/
-│   ├── actions.ts              · 'use server' 文件：Zod 登录校验
-│   ├── revalidate-actions.ts   · 'use server' 文件：按需失效四件套
-│   ├── optimistic-actions.ts   · 'use server' 文件：乐观更新的慢接口
+│   ├── actions.ts              · 'use server'：Zod 登录校验
+│   ├── revalidate-actions.ts   · 'use server'：按需失效四件套
+│   ├── optimistic-actions.ts   · 'use server'：乐观更新的慢接口
 │   ├── knowledge-map.ts        · 知识点地图数据源
 │   └── utils.ts                · cn() = clsx + tailwind-merge
 ├── context/Theme.tsx           · next-themes Provider 二次封装
@@ -364,11 +363,15 @@ export default function DashboardLayout({
 ```
 
 > **为什么 `@team` 和 `@analytics` 都必须配 `default.tsx`？**
-> 平行路由有一个反直觉行为：
-> - **硬刷新 / 直接输入 URL** → Next 找不到 slot 匹配，走 **`not-found`**
-> - **软导航（`<Link>` 点击）** → Next 保留上一次 slot 状态；若从未有过，则渲染 **`default.tsx`**
+> 平行路由有一个反直觉行为（已在本仓库实测，命令见 [9.2](#92-自测命令速查)）：
+> - **硬刷新 / 直接输入 URL** → 当前路由下没有匹配的 slot 内容，Next 渲染该 slot 的 **`default.tsx`**
+> - **软导航（`<Link>` 点击）** → Next 保留上一次 slot 的状态（同一 slot 在不同路由间切换时不会重置）
 >
-> 缺了 `default.tsx`，用户点链接进来就会 404。这是平行路由最高频的线上事故。`app/default.tsx`、`@team/default.tsx`、`@analytics/default.tsx` 三个文件共同构成完整兜底链。
+> 实测证据：`curl /dashboard/users/1` 看到的是 `team default` / `analytics default`；
+> 而 `curl /`（该路由下 slot 确有对应 page）看到的是 `Team page` / `Analytics page`。
+>
+> 缺了 `default.tsx`，硬导航到没有对应 slot 的路由时 slot 会直接空掉 —— 这是平行路由最高频的线上事故。
+> `app/default.tsx`、`@team/default.tsx`、`@analytics/default.tsx` 三个文件共同构成完整兜底链。
 
 > ⚠️ **命名陷阱**：`app/@analytics`（slot）和 `app/(dashboard)/dashboard/analytics`（普通路由）**同名但毫无关系**。前者是注入 layout 的 UI 片段，后者是 `/dashboard/analytics` 这个 URL。看代码时务必分辨。
 
@@ -579,35 +582,10 @@ export default async function Home() {
 | `<Suspense>` | 手写 React API | 任意子树 | 否 |
 | `error.tsx` | 抛异常 | 整个路由段 | **是** |
 
-### 4.7 Next 16 缓存体系：四种互斥手段
+### 4.7 Next 16 缓存体系：四个层级
 
-`mycache/page.tsx` 是全仓库**注释密度最高**的文件，一页内把缓存的全部开关陈列出来（大部分注释掉，方便你逐条开实验）：
-
-```tsx
-import { Suspense } from "react";
-import { cookies } from "next/headers";
-import { connection } from "next/server";
-// import { cacheLife } from "next/cache";
-
-// 使用revalidate属性，可以设置缓存时间，单位为秒
-// export const revalidate = 5; // 5秒后重新更新
-
-// 使用dynamic属性，并且设置为force-dynamic，表示将禁用缓存，每次请求都会重新获取数据
-export const dynamic = "force-dynamic"; // 动态更新 缓存组件不需要使用这个 默认都是动态内容
-//export const revalidate = 0 // 设置为0表示不缓存
-
-const DynamicContent = async () => {
-  // ("use cache");
-  // cacheLife("hours"); //使用预设参数
-  //cacheLife({stale: 30, revalidate: 1, expire: 1}) //使用自定义参数
-  const data = await fetch("https://www.mocklib.com/mock/random/name");
-  const cookieStore = await cookies(); //获取cookie
-  await connection();
-  // 使用cache属性，并且设置为no-store，表示将禁用缓存，每次请求都会重新获取数据
-  const randomImage = await fetch("https://www.loliapi.com/acg/pc?type=json", { cache: "no-store" });
-  // ...
-};
-```
+> ⚠️ 本节讲的是**心智模型**。具体代码与实验在 [4.16](#416-cache-components把-use-cache-真正跑起来-)，
+> 页面在 `/mycache`（缓存侧与动态侧同页对照，刷新几次就能看懂）。
 
 **四层手段速查**：
 
@@ -616,8 +594,8 @@ const DynamicContent = async () => {
 | ① **组件级** | `"use cache"` + `cacheLife()` / `cacheTag()` | 单个组件/函数 | **Cache Components**（Next 16 主打，本仓库已开启） |
 | ② **请求级** | `fetch(url, { cache: 'no-store' })` | 单个请求 | 精确控制某一条请求 |
 | ②' **请求级** | `fetch(url, { next: { revalidate: N, tags: [...] } })` | 单个请求 | 配合 `revalidateTag()` 按需失效 |
-| ③ **路径级** | `revalidatePath()` / `revalidateTag()` / `updateTag()` | 按需失效 | 内容变更后主动清缓存 |
-| ④ **段级（旧）** | `export const revalidate` / `dynamic` / `dynamicParams` | 整个路由段 | ⚠️ **Cache Components 开启后构建期直接报错**，见 [4.16](#416-cache-components把-use-cache-真正跑起来-) |
+| ③ **路径级** | `revalidatePath()` / `revalidateTag()` / `updateTag()` / `refresh()` | 按需失效 | 内容变更后主动清缓存 |
+| ④ **段级（旧）** | `export const revalidate` / `dynamic` / `dynamicParams` | 整个路由段 | ⚠️ **Cache Components 开启后构建期直接报错**，已被 ①③ 取代 |
 
 **`cacheLife` 的三段语义**（Next 16 新模型）：
 
@@ -632,13 +610,28 @@ cacheLife({
 
 预设值：`cacheLife("seconds" | "minutes" | "hours" | "days" | "weeks" | "max")`。
 
-> **开启方式**：`"use cache"` 需要 `next.config.ts` 里 `cacheComponents: true`。
-> **本仓库已开启**，缓存与动态的完整对照见 [4.16](#416-cache-components把-use-cache-真正跑起来-)。
-> 注意：开启后 `export const dynamic` / `revalidate` / `dynamicParams` 全部失效，需改用 `connection()` 与 `"use cache"`。
+**旧模型（Next 15 及以前）长什么样** —— 只做对照，**不要再用**：
 
-### 4.8 Server Actions 演进链：7 个页面的完整教学路径
+```tsx
+// ❌ Cache Components 开启后，这三行会让构建直接失败
+export const dynamic = "force-dynamic";  // 强制动态
+export const revalidate = 5;             // 5 秒 ISR
+export const dynamicParams = false;      // 未预生成的路径直接 404
+```
 
-`(auth)/` 目录下的 7 个登录页构成了一条**从传统到现代**的演进路线：
+它们各自的现代替代：
+
+| 旧写法 | 现代替代 |
+|---|---|
+| `dynamic = "force-dynamic"` | `await connection()` |
+| `revalidate = N` | `"use cache"` + `cacheLife({ revalidate: N })` |
+| `dynamicParams = false` | 路由内 `notFound()`（注意 PPR 下状态码，见 [4.27](#427-实测坑点ppr-模式下-notfound-返回-200)） |
+
+> **开启方式**：`"use cache"` 需要 `next.config.ts` 里 `cacheComponents: true`。本仓库**已开启**。
+
+### 4.8 Server Actions 演进链：3 个登录页的完整教学路径
+
+`(auth)/` 目录下的 3 个登录页构成了一条**从传统到现代**的演进路线：
 
 ```text
 演进链（越往下越现代）
@@ -781,9 +774,9 @@ export async function POST(request: NextRequest) {
 
 > 📌 调试技巧：根目录的 `api.http` 配合 VS Code 的 **REST Client** 插件（`humao.rest-client`）可直接发请求。`###` 是请求分隔符，`#` 是注释行。
 
-### 4.10 鉴权：手写 Cookie 与 Clerk 备份
+### 4.10 鉴权：手写 Cookie 演示 + Clerk 占位
 
-仓库提供两套鉴权演示，定位不同：
+仓库目前只有一套能跑通的鉴权演示，另有一套是占位：
 
 | 方案 | 文件 | 状态 | 说明 |
 |---|---|---|---|
@@ -1251,7 +1244,7 @@ export async function OPTIONS(request: NextRequest) {
   - `register()`：服务启动钩子（可按 `process.env.NEXT_RUNTIME` 区分 nodejs / edge）
   - `onRequestError(error, request, context)`：服务端错误统一上报，能拿到「哪条路由、什么方法、什么错误」
 
-### 4.27 ⚠️ 实测坑点：PPR 模式下 notFound() 返回 200
+### 4.27 实测坑点：PPR 模式下 notFound() 返回 200
 
 这是本轮**实测复现**（`next build` + `pnpm start` + `curl -I`，干净实例）出来的高价值结论：
 
@@ -1305,28 +1298,26 @@ ai@6.0.39            ← 核心（streamText / generateText / 工具调用 / Age
 
 ### 5.2 推荐实现：流式对话（DeepSeek 版）
 
-**① 服务端 `/api/chat`**（替换空文件）：
+**① 服务端 `app/api/chat/route.ts`**（当前是 501 占位，替换成）：
 
 ```ts
-// app/api/chat/route.ts
 import { deepseek } from "@ai-sdk/deepseek";
 import { streamText, convertToModelMessages } from "ai";
 
-export const maxDuration = 60; // 允许长推理（DeepSeek-reasoner 较慢）
+export const maxDuration = 60;               // 允许长推理（deepseek-reasoner 较慢）
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();   // 前端 useChat 自动按 UIMessage 格式发
+  const { messages } = await req.json();     // useChat 自动按 UIMessage 格式发
   const result = streamText({
-    model: deepseek("deepseek-chat"),       // 想用推理模型换 deepseek-reasoner
+    model: deepseek("deepseek-chat"),        // 想用推理模型换 deepseek-reasoner
     system: "你是 next16-sass 的实验助手，回答简洁、可运行。",
     messages: convertToModelMessages(messages),
   });
-  // AI SDK 6：用 UIMessage 流返回，前端 useChat 可直接消费
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse();  // AI SDK 6：用 UIMessage 流返回
 }
 ```
 
-**② 前端聊天面板**（新建 `app/chat/page.tsx`）：
+**② 前端 `app/chat/page.tsx`**（新建）：
 
 ```tsx
 "use client";
@@ -1337,7 +1328,7 @@ export default function Chat() {
   return (
     <div className="mx-auto max-w-2xl p-4">
       {messages.map((m) => (
-        <div key={m.id} className="mb-2">
+        <div key={m.id}>
           <b>{m.role === "user" ? "我" : "AI"}：</b>
           {m.parts.map((p, i) => (p.type === "text" ? <span key={i}>{p.text}</span> : null))}
         </div>
@@ -1358,6 +1349,8 @@ export default function Chat() {
   );
 }
 ```
+
+> 流式响应的服务端写法与本仓库 `/api/stream`（SSE）同源，可对照 [4.22](#422-流式响应route-handler--readablestream)。
 
 ### 5.3 AI SDK 6 的关键变化
 
@@ -1457,7 +1450,7 @@ export default nextConfig;
 
 **额外提示**：
 
-- 拦截路由**已补齐**：`app/(root)/intercepting/@modal/(.)photo/[id]`（见 [4.20](#420-拦截路由intercepting-routes--新增)）
+- 拦截路由**已补齐**：`app/(root)/intercepting/@modal/(.)photo/[id]`（见 [4.20](#420-拦截路由intercepting-routes-新增)）
 - `"use cache"` 已**全面生效**（`cacheComponents: true`），真实示例见 `app/mycache/CachedPart.tsx`；原占位组件 `components/MyComponent.tsx` 已删除
 - `generateStaticParams` / `revalidatePath` / `revalidateTag` / `updateTag` / `refresh` **均已补齐并实测通过**
 - 完整索引见运行时页面 [`/knowledge`](http://localhost:3000/knowledge)
@@ -1487,29 +1480,77 @@ export default nextConfig;
 
 ## 九、速查附录
 
-### 9.1 App Router 约定文件速查
+### 9.1 知识点覆盖清单
 
-| 文件名 | 角色 | 客户端？ | 必须含 `<html>` |
-|---|---|---|---|
-| `layout.tsx` | 布局 | 否(可用 use client) | 根 layout 必须 |
-| `template.tsx` | 每次重挂载布局 | 否(可用 use client) | 否 |
-| `page.tsx` | 页面 | 否(可用 use client) | 否 |
-| `loading.tsx` | Suspense 边界 | 否 | 否 |
-| `error.tsx` | 段级错误 | **是** | 否 |
-| `global-error.tsx` | 全局错误 | **是** | **是** |
-| `not-found.tsx` | 404 | 否(可用 use client) | 否 |
-| `default.tsx` | 平行路由兜底 | 否 | 否 |
+| 知识点 | 验证入口 |
+|---|---|
+| Cache Components / `"use cache"` / `cacheLife` / `cacheTag` | `/mycache`、`/ssg/1` |
+| `connection()` 显式动态渲染 | `/mycache`、`/notfound-dynamic` |
+| `generateStaticParams` + ISR（stale / revalidate / expire） | `/ssg`、`/ssg/1` |
+| `revalidatePath` / `revalidateTag` / `updateTag` / `refresh` | `/revalidate` |
+| `useOptimistic` / `useFormStatus`（React 19） | `/optimistic` |
+| 拦截路由 `(.)` + 平行路由 slot 兜底 | `/intercepting` |
+| `notFound()` 与 404 状态码坑点 | `/notfound`、`/notfound-dynamic` |
+| `after()` 响应后任务 | `/after` |
+| 导航 Hooks（usePathname / useSearchParams / useParams / useSelectedLayoutSegment(s)） | `/hooks` |
+| 完整 metadata + viewport | `/seo` |
+| `sitemap.ts` / `robots.ts` / `manifest.ts` | `/sitemap.xml`、`/robots.txt` |
+| `icon.tsx` / `opengraph-image.tsx`（ImageResponse 动态 PNG） | `/icon` |
+| `next/font` 字体优化 | `/font` |
+| `instrumentation.ts`（register / onRequestError） | — |
+| SSE 流式响应 | `/stream`、`/api/stream` |
+| CORS 预检 / `rewrite` / `response.cookies` / `maxDuration` | `/api/cors`、`/api/redirect`、`/api/cookies` |
+| 约定文件七件套 + 平行路由 `default.tsx` 兜底 | `/basic/a`、`/` |
+| 动态路由三兄弟（`[id]` / `[...id]` / `[[...id]]`） | `/slug/foo`、`/slug/a/b`、`/slugs` |
+| RSC vs Client / `server-only` | `/client`、`/serveronly` |
+| `next/image` 三形态 + sizes | `/myimage` |
+| Suspense 流式渲染 | `/mysuspense` |
+| Server Actions 演进链（fetch → FormData → useActionState+Zod） | `/mylogin` → `/serverlogin` → `/serverzodlogin` |
+| `proxy.ts`（Next 16 重命名） | — |
+| Tailwind v4 CSS-first 配置 | `app/globals.css` |
+| MDX 即路由页面 | `/mdx-page`（需先启用 `pageExtensions`） |
 
-### 9.2 初始化备忘（原 README 内容，保留）
+> 运行时还有一份可点击的同款清单：<http://localhost:3000/knowledge>
+
+### 9.2 自测命令速查
 
 ```bash
-pnpm i babel-plugin-react-compiler@latest
-# 在 next.config.ts 中配置 reactCompiler: true
-npx shadcn@latest init
-npm install -D babel-plugin-react-compiler
+pnpm build      # 看路由表：○ 静态 / ◐ PPR / ƒ 动态
+pnpm start      # 启动生产实例
+pnpm lint
 ```
 
-### 9.3 调试：`api.http` 用法
+```bash
+# ISR 是否命中缓存
+curl -I http://127.0.0.1:3000/ssg/1          # x-nextjs-cache: HIT
+
+# Cache Components 是否生效（Revalidate 1h / Expire 1d）
+pnpm build | grep mycache
+
+# 404 状态码坑点（详见 4.27）
+curl -I http://127.0.0.1:3000/notfound          # 200（页面却是 404 界面）
+curl -I http://127.0.0.1:3000/notfound-dynamic  # 仍是 200（PPR 壳子已发出）
+curl -I http://127.0.0.1:3000/no-such-route     # 404 ✅
+curl -I http://127.0.0.1:3000/api/notfound      # 404 ✅（Route Handler 自控状态码）
+
+# 平行路由 slot 的硬导航行为（详见 4.2）
+curl -s http://127.0.0.1:3000/dashboard/users/1 | grep -o "team default"  # 命中 default.tsx
+curl -s http://127.0.0.1:3000/ | grep -o "Team page"                       # 命中 page.tsx
+
+# SEO 约定文件
+curl -I http://127.0.0.1:3000/sitemap.xml
+curl -I http://127.0.0.1:3000/robots.txt
+curl -I http://127.0.0.1:3000/manifest.webmanifest
+```
+
+### 9.3 初始化备忘
+
+```bash
+pnpm i babel-plugin-react-compiler@latest   # React Compiler
+npx shadcn@latest init                      # shadcn/ui
+```
+
+### 9.4 调试：`api.http` 用法
 
 仓库根目录的 `api.http` 是 VS Code **REST Client** 插件（`humao.rest-client`）的请求草稿。规则：
 
@@ -1517,7 +1558,7 @@ npm install -D babel-plugin-react-compiler
 - `###` = 请求之间的分隔符
 - 示例：`GET http://localhost:3000/api/user/886 HTTP/1.1` 正好对应 `api/user/[id]/route.ts`
 
-### 9.4 关键版本号
+### 9.5 关键版本号
 
 ```text
 next            16.3.8
@@ -1533,101 +1574,7 @@ typescript      5.9.3
 eslint          9.39.2
 ```
 
-> 版本号以 `package.json` 为准（Next 16.3.8 / React 19.3.0）。
-
-## 十、知识点补全总览
-
-本轮针对仓库做了完整的 Next.js 16 知识点审计，并补齐了原先留白的部分。
-
-### 10.1 覆盖度对照（补全前 → 补全后）
-
-| 知识点 | 补全前 | 补全后 | 验证入口 |
-|---|---|---|---|
-| Cache Components / `"use cache"` | ❌ 开关关闭，仅占位 | ✅ **已开启并跑通** | `/mycache` |
-| `cacheLife` / `cacheTag` | ❌ 未使用 | ✅ 已使用 | `/mycache`、`/ssg/1` |
-| `connection()` | ⚠️ 仅 mysuspense 一处 | ✅ 规范化使用 | `/mycache`、`/notfound-dynamic` |
-| `generateStaticParams` | ❌ 未使用 | ✅ 预渲染 /ssg/1~3 | `/ssg` |
-| ISR（revalidate 过期） | ❌ 未使用 | ✅ stale/revalidate/expire 三段 | `/ssg/1` |
-| `revalidatePath` | ❌ 未使用 | ✅ 已实现 | `/revalidate` |
-| `revalidateTag` | ❌ 未使用 | ✅ 已实现（注意是 2 参数） | `/revalidate` |
-| `updateTag`（Next 16 新增） | ❌ 未使用 | ✅ 已实现 | `/revalidate` |
-| `refresh`（Next 16 新增） | ❌ 未使用 | ✅ 已实现 | `/revalidate` |
-| `useOptimistic`（React 19） | ❌ 未使用 | ✅ 已实现 | `/optimistic` |
-| `useFormStatus`（React 19） | ❌ 未使用 | ✅ 已实现（独立子组件） | `/optimistic` |
-| 拦截路由 `(.)` | ❌ 明确缺失 | ✅ 已实现（含 default 兜底） | `/intercepting` |
-| `notFound()` | ⚠️ 有页面无调用 | ✅ 已调用，并发现 PPR 下状态码坑点 | `/notfound` |
-| `after()` | ❌ 未使用 | ✅ 已实现 | `/after` |
-| 导航 Hooks 全集 | ⚠️ 只用了 useParams | ✅ 5 个 Hook 全覆盖 | `/hooks` |
-| `useSearchParams` + Suspense | ❌ 未使用 | ✅ 已实现（含构建期约束说明） | `/hooks` |
-| `generateViewport` / viewport | ❌ 未使用 | ✅ 已实现 | `/seo` |
-| 完整 metadata 字段 | ⚠️ 只有 title/description | ✅ 全套字段 | `/seo` |
-| `sitemap.ts` / `robots.ts` / `manifest.ts` | ❌ 未使用 | ✅ 已实现 | `/sitemap.xml` |
-| `icon.tsx` / `opengraph-image.tsx` | ❌ 未使用 | ✅ 已实现（ImageResponse） | `/icon` |
-| `next/font` | ❌ 未使用 | ✅ 已实现 | `/font` |
-| `instrumentation.ts` | ❌ 未使用 | ✅ 已实现 | — |
-| SSE 流式响应 | ❌ 未使用 | ✅ 已实现（服务端 + 客户端） | `/stream` |
-| CORS 预检 OPTIONS | ❌ 未使用 | ✅ 已实现 | `/api/cors` |
-| `rewrite` 内部改写 | ❌ 未使用 | ✅ 已实现 | `/api/redirect` |
-| `response.cookies` + `maxDuration` | ❌ 未使用 | ✅ 已实现 | `/api/cookies` |
-| `error.tsx` 的 error/reset | ❌ 未实现（缺陷） | ✅ 已修复 | `/basic/a` |
-| `global-error.tsx` 的 html/body | ❌ 缺失（缺陷） | ✅ 已修复 | — |
-| 全仓库索引 | ❌ 无 | ✅ **知识点地图** | `/knowledge` |
-
-### 10.2 本轮新增/修改的文件
-
-**新增示例目录**
-
-```text
-app/(root)/ssg/[id]/          app/(root)/revalidate/     app/(root)/optimistic/
-app/(root)/intercepting/      app/(root)/hooks/          app/(root)/after/
-app/(root)/stream/            app/(root)/seo/            app/(root)/font/
-app/(root)/knowledge/         app/(root)/notfound-dynamic/
-app/api/stream/               app/api/cors/              app/api/redirect/
-app/api/cookies/              app/api/notfound/          app/mycache/CachedPart.tsx
-app/mycache/DynamicPart.tsx
-app/sitemap.ts  app/robots.ts  app/manifest.ts  app/icon.tsx  app/opengraph-image.tsx
-app/instrumentation.ts  lib/revalidate-actions.ts  lib/optimistic-actions.ts
-lib/knowledge-map.ts
-```
-
-**修改的既有文件**
-
-| 文件 | 改动 |
-|---|---|
-| `next.config.ts` | `cacheComponents: false` → **`true`** |
-| `app/mycache/page.tsx` | 重写为 `use cache` ↔ `connection()` 同页对照 |
-| `app/(root)/albums/page.tsx` | `export const dynamic` → `await connection()` |
-| `app/(root)/error.tsx` | 补 `error` / `reset` props 与重试按钮 |
-| `app/basic/error.tsx` | 同上 |
-| `app/global-error.tsx` | 补 `<html><body>` 与 `error` / `reset` |
-| `app/not-found.tsx` | 换成带导航的完整 404 页面 |
-| `lib/actions.ts` | 修掉未使用变量（lint warning） |
-
-### 10.3 实测验证记录
-
-所有结论均在 `next build` + `pnpm start` 下用 `curl` 实测，非文档推断。
-
-```text
-构建：✓ Compiled successfully · TypeScript 通过 · 生成 58 个静态页
-Lint：0 error 0 warning
-```
-
-| 验证项 | 命令 | 实测结果 |
-|---|---|---|
-| ISR 命中缓存 | `curl -I /ssg/1` | `x-nextjs-cache: HIT`、`x-nextjs-stale-time: 30` |
-| SSG 预渲染 | `pnpm build` 输出 | `/ssg/1~3` 标记为 `○ Static` |
-| Cache Components 生效 | `pnpm build` 输出 | `/mycache` 标记 `◐`，Revalidate `1h` / Expire `1d` |
-| PPR 生效 | `pnpm build` 输出 | 全站出现 `◐ Partial Prerender` |
-| **404 状态码坑点** | `curl -I /notfound` | **200 OK**（页面却是 404 界面） |
-| 同上（加了 connection()） | `curl -I /notfound-dynamic` | 仍是 **200 OK**（PPR 壳子已发出） |
-| 未匹配路由 | `curl -I /no-such-route` | **404 Not Found** ✅ |
-| Route Handler 自行返回 | `curl -I /api/notfound` | **404 Not Found** ✅ |
-| SEO 约定文件 | `curl -I /sitemap.xml` 等 | 200，且由约定文件自动产出 |
-
-> ⚠️ 404 状态码问题的根因不是「预渲染」这一个因素，而是**响应已经开始流式输出**：
-> 预渲染壳子随首字节发出时状态码就锁定 200 了。
-> 所以 `await connection()` 也救不回来 —— 实测 `/notfound-dynamic` 依然是 200。
-> 唯一稳定拿到 404 的两条路：**框架级路由未匹配**、**Route Handler 显式返回 404**。
+> 版本号以 `package.json` 为准。
 
 ---
 
