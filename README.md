@@ -1336,6 +1336,22 @@ export default function Icon() {
 }
 ```
 
+#### ⚠️ 文章页元数据：必须走 `getPostMeta()` 合并
+
+MDX 有**三条**元数据来源：YAML frontmatter（编译成 `export const frontmatter`）、
+手写 `export const metadata`、同名 `.json` 旁路。
+
+若 `generateMetadata` 里直接读 `mod.metadata`，就**只拿得到第 ② 条** ——
+用 frontmatter 写元数据的文章会全部退化成文件名：
+
+```text
+修复前实测：<title>hello · next16-sass</title>   ← 应为「第一篇文章：用 MDX 写博客」
+            description / keywords / og:title 全部缺失
+```
+
+页面正文正常、只有 `<head>` 是错的 —— 这类 bug 最容易漏到线上。
+正确写法见 [第 20 课 §2.3](doc/20_元数据与SEO约定文件.md)。
+
 ### 4.25 Route Handler 进阶：CORS / redirect / rewrite / Cookie
 
 新增三个可点开的接口：

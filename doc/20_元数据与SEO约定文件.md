@@ -107,6 +107,83 @@ export default async function UserDetail({
 
 ---
 
+
+### 2.3 ⚠️ 文章页的元数据：必须走 `getPostMeta()` 合并，不能直接读 `mod.metadata`
+
+这是一个**实测踩到、且影响 SEO** 的坑。MDX 里有**三条**元数据来源：
+
+| 来源 | 写法 | 编译后变成 | 读取方式 |
+|---|---|---|---|
+| YAML frontmatter | `---` 包裹 | `export const frontmatter` | `mod.frontmatter` |
+| 手写导出 | `export const metadata = {...}` | `export const metadata` | `mod.metadata` |
+| `.json` 旁路 | 同名 `.json` 文件 | （不在编译产物里） | `readJsonMeta()` |
+
+`getPostMeta()` 把三条**合并**（frontmatter 优先）：
+
+```ts
+const meta = {
+  ...((mod.frontmatter ?? {}) as Partial<PostMeta>),
+  ...((mod.metadata ?? {}) as Partial<PostMeta>),
+};
+```
+
+**如果 `generateMetadata` 里直接写 `const meta = mod.metadata ?? {}`：**
+
+```tsx
+// ❌ 只拿得到第 ② 条
+const mod = await import(`@/content/${entry.file}`);
+const meta = (mod.metadata ?? {}) as Record<string, unknown>;
+```
+
+那么用 YAML frontmatter 写元数据的文章（本仓库的示例全部如此）会**全部拿不到**：
+
+```text
+构建产物实测（修复前）：
+  <title>hello · next16-sass</title>              ← 应该是「第一篇文章：用 MDX 写博客」
+  <title>first-post · next16-sass</title>         ← 应该是「新闻分类的第一篇」
+  <meta name="description">                        ← 缺失
+  <meta name="keywords">                           ← 缺失
+  <meta property="og:title" content="hello">      ← 社交分享卡片标题也是文件名
+```
+
+影响面：`<title>`、SEO description、keywords、Open Graph / Twitter 标题与摘要、
+`publishedTime`、作者 —— **全部退化成文件名**。页面正文却正常显示（因为正文用的是另一套取值），
+所以肉眼看文章页完全正常，**只有 `<head>` 里的东西是错的** —— 这类 bug 最容易漏到线上。
+
+**正确写法**（页面主体与 `generateMetadata` 用同一个函数）：
+
+```tsx
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const { slug } = await params;
+  const entry = getPostFiles().find((p) => p.slug === slug.join("/"));
+  if (!entry) return { title: slug.join("/") };
+
+  // ✅ 走 getPostMeta() —— 三条来源合并
+  const meta = (await getPostMeta(entry.slug)) ?? { title: entry.baseSlug };
+  return {
+    title: meta.title ?? entry.baseSlug,
+    description: meta.excerpt,
+    keywords: meta.tags,
+    // …
+  };
+}
+```
+
+修复后实测：
+
+```text
+<title>第一篇文章：用 MDX 写博客 · next16-sass</title>
+<meta name="description" content="把写好的 .mdx 文件丢进 content/ 目录…">
+<meta name="keywords" content="教程,MDX">
+<meta property="og:title" content="第一篇文章：用 MDX 写博客">
+```
+
+> 💡 **自检习惯**：改完元数据相关代码后，别只看页面正文 ——
+> 直接看**构建产物**里的 `<head>`：
+> ```bash
+> grep -oE "<title>[^<]*</title>" .next/server/app/posts/hello.html
+> ```
+
 ## 三、六个 SEO 约定文件
 
 | 文件 | 产出 | 类型 |

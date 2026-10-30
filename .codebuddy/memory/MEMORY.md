@@ -111,3 +111,10 @@
   验证必须访问一个 `generateStaticParams` 里**没有**的参数（如 `/tags/zzz`）。
 - 副作用：加 Suspense 后，枚举外参数的 **404 状态码变 200**（PPR 壳子锁定状态码，
   与第 06 课同一个坑）。
+
+## 布局约定（2026-10-30 定）
+- **内容站页面统一 100% 满宽**：页面容器一律去掉 `mx-auto` + `max-w-*`，只留 padding。
+  涉及 posts / tags / category / author / search / archive / 详情页 / 404。
+- **例外**：主仓库 `app/(root)/` 下的教学演示页与教学首页保持 `max-w-2xl` 居中 ——
+  它们是逐个知识点的独立演示页，与内容站页面定位不同，不要一起改。
+- 头部导航与页脚同样满宽（`app/layout.tsx` 里去掉 `mx-auto max-w-6xl`）。
