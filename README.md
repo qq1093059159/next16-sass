@@ -10,15 +10,20 @@
 ## 项目速览（30 秒读完）
 
 > **一句话**：一个把 Next.js 16 App Router 全部核心机制跑一遍的**教学型仓库** —— 每个目录就是一个知识点的最小可运行样本，大量样本被刻意做成**两两对照组**，让你亲手体会差异，而不是读文档想象。
+>
+> **⭐ 但它不只是一本教材**：第十一章是一套**可以直接搬走的内容引擎基座** ——
+> 把 `content/` 接上，你的 Next.js 项目立刻拥有文章站 / 博客站 / 文档站的内容层。
+> [看基座速览与移植指南 →](#110-基座速览)
 
 | 维度 | 结论 |
 |---|---|
 | **是什么** | Next.js 16 特性地图 + 反模式对照表 + 实测踩坑清单 |
 | **不是什么** | ❌ 生产级 SaaS 模板 ❌ 最佳实践范本（代码里多处标注「仅供演示」） |
 | **技术底座** | Next.js 16.3.8 · React 19.3.0 · Tailwind v4 · TypeScript 5 · Turbopack |
-| **规模** | 56 个路由目录 · 28 个知识点主题 · 70 个构建产物页面 |
+| **规模** | 61 个路由目录 · 28 个知识点主题 · 95 个构建产物页面 |
 | **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
 | **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
+| **⭐ 核心产出** | **[第十一章 · 内容引擎基座](#十一内容引擎文章站--博客站基座)** —— 把 .md/.mdx 丢进 `content/` 即成文章站（16 项能力 · 18 个文件 · 5 分钟移植到你的项目） |
 
 **目录骨架**（到分组为止，细节见[第三章](#三路由全景地图)）：
 
@@ -49,6 +54,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 
 | 章节 | 内容 | 适合谁 |
 |---|---|---|
+| ⭐ [**十一、内容引擎基座**](#十一内容引擎文章站--博客站基座) | **本仓库的核心产出**：可直接搬走的文章站/博客站内容层（16 项能力 · 移植指南） | **想搭内容站** |
 | [项目速览](#项目速览30-秒读完) | 30 秒读完整个项目：定位 · 骨架 · 三层阅读路径 | 所有人 |
 | [一、项目定位与技术栈](#一项目定位与技术栈) | 这仓库是什么、不是什么；依赖分层清单 | 所有人 |
 | [二、5 分钟跑起来](#二5-分钟跑起来) | 环境要求、启动、环境变量、踩坑表 | 第一次 clone 的人 |
@@ -60,7 +66,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
 | [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
 | [**十、doc/ 教学文档**](#十doc-教学文档25-课体系) | **25 课教学拆解**：概念 + 真实代码 + 动手实验 + 自检 | 想系统跟着学 |
-| [**十一、MDX 与内容目录**](#十一mdx-与内容目录目录即内容源) | 把 .md/.mdx 丢进 `content/` 即成文章；两种 MDX 模式的区别 | 想写博客/做 CMS |
+| [**十一、内容引擎：文章站 / 博客站基座**](#十一内容引擎文章站--博客站基座) | ⭐ **本仓库核心产出**：把 .md/.mdx 丢进 `content/` 即成文章站。16 项能力 · 18 个文件 · 5 分钟移植 | **想搭博客/文章站/文档站** |
 
 ---
 
@@ -82,6 +88,13 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 - ❌ **不是最佳实践范本** —— 代码中多处自带「仅供演示 非最佳实践」注释
 - ✅ **是 Next.js 16 特性地图 + 反模式对照表** —— 连"坑"都给你准备好了，见[第七章](#七架构师-review已知问题与-todo)
 
+> **⭐ 一个明确的例外：[第十一章的内容引擎基座](#十一内容引擎文章站--博客站基座)是可以直接用的。**
+>
+> 上面说的「不是生产级」指的是**仓库整体**（那些路由组、AI 接线、鉴权演示都是教学道具）。
+> 但第十一章那 18 个文件构成的是一个**边界清晰、可移植、零框架依赖**的内容层 ——
+> 它的每个文件都有明确职责，没有一处「仅供演示」的妥协。
+> [看 5 分钟移植指南 →](#5-分钟移植指南)
+
 ### 1.3 技术栈全景
 
 | 层 | 依赖 | 备注 |
@@ -92,7 +105,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | 数据 / 校验 | `zod` 4.3 | `z.treeifyError` 是 Zod 4 新 API |
 | 鉴权 | `@clerk/nextjs` 6.36 | ⚠️ 仅占位未接线，生产请换成熟方案 |
 | AI | `ai` 6.0 · `@ai-sdk/react` 3 · `@ai-sdk/deepseek` 2 | ⚠️ `app/api/chat` 是 501 占位，见[第五章](#五ai-能力专区ai-潮流达人视角) |
-| 内容 | `@next/mdx` · `@mdx-js/loader` · `@mdx-js/react` · `next-mdx-remote-client` | MDX 支持需在 `next.config.ts` 启用 |
+| 内容 | `@next/mdx` · `@mdx-js/loader` · `@mdx-js/react` · `remark-gfm` · `remark-frontmatter` · `remark-mdx-frontmatter` · `rehype-slug` · `rehype-pretty-code` · `shiki` · `gray-matter` · `fuse.js` | 内容引擎基座，见[第十一章](#十一内容引擎文章站--博客站基座) |
 | 监控 | `@vercel/analytics` · `@vercel/speed-insights` | 已在根 layout 挂载 |
 
 ### 1.4 三个值得注意的版本信号
@@ -1689,7 +1702,176 @@ eslint          9.39.2
 > **`curl` 实测复现**；④ 标题锚点用官方 `github-slugger` 复算、内部链接逐个核对。
 
 
-## 十一、MDX 与内容目录（目录即内容源）
+## 十一、内容引擎：文章站 / 博客站基座
+
+> **这一章是本仓库的核心产出。**
+>
+> 前十章是**教学实验田** —— 用来验证 Next.js 的各种机制、踩坑、对比。
+> 这一章是**可以直接搬走的成品基座**：把 `content/` 目录接上，
+> 你的 Next.js 项目立刻拥有博客 / 文章站 / 文档站的内容层。
+>
+> **零框架依赖**（只用 Next 官方 `@next/mdx` + unified 插件链），
+> 不绑 Fumadocs / Nextra，不绑 CMS，不绑数据库。
+
+### 11.0 基座速览
+
+#### 一句话架构
+
+```text
+  content/                     lib/posts.ts                app/posts/[...slug]/
+  ├── tech/                     ├── 递归扫描目录             ├── generateStaticParams
+  │   ├── _meta.json            ├── 读 frontmatter            │   （数组长度 = 路径深度）
+  │   └── ssg.mdx  ──────────▶  ├── 过滤 draft              │
+  ├── life/                     ├── 推导分类树             ▼
+  │   └── intro.md              └── 索引 / 标签 / 相邻      ○ Static（构建期预渲染）
+  └── hello.mdx                        │
+                                       ▼
+                            ┌──────────────────────┐
+                            │  路由层（自动生成）    │
+                            │  /posts/<slug>        │
+                            │  /posts/page/2        │
+                            │  /category/a/b        │
+                            │  /tags/<tag>          │
+                            │  /search  /rss.xml    │
+                            └──────────────────────┘
+```
+
+**你只需要做一件事**：往 `content/` 里放 `.md` / `.mdx` 文件。
+路由、列表、分类、标签、搜索、RSS、草稿过滤 —— 全部自动。
+
+#### 能力清单（16 项，全部在本仓库实测通过）
+
+| # | 能力 | 实现方式 | 验证入口 |
+|---|---|---|---|
+| 1 | 文章路由（任意深度） | catch-all `[...slug]` + `generateStaticParams` | `/posts/tech/ssg-deep-dive` |
+| 2 | 多级分类 | 目录即分类，分类页 catch-all + 面包屑 | `/category/a/b` |
+| 3 | 文章列表 | 递归扫描 + 按日期倒序 | `/posts` |
+| 4 | 路径分页 | 静态生成，每页独立 URL | `/posts/page/2` |
+| 5 | 标签页 | frontmatter `tags` → `/tags/<tag>` | `/tags/Next.js` |
+| 6 | 全文搜索 | 构建期索引 + 中文子串匹配 + Fuse.js | `/search` |
+| 7 | RSS 2.0 | Route Handler，含 `atom:link` 自引用 | `/rss.xml` |
+| 8 | RSS 自动发现 | 根 layout 的 `alternates.types` | 任意页面的 `<head>` |
+| 9 | 上一篇 / 下一篇 | 按日期排序取相邻 | 任意文章底部 |
+| 10 | 草稿机制 | `draft: true` → 四处完全排除 | `/posts/news/draft-wip` |
+| 11 | YAML frontmatter | remark 插件链，`.md` / `.mdx` 通用 | 任意文章 `<title>` |
+| 12 | GFM 语法 | 表格 / 删除线 / 任务列表 / 自动链接 | `/posts/gfm-test` |
+| 13 | 代码高亮 | Shiki（编译期，零运行时开销） | `/posts/gfm-test` |
+| 14 | 标题锚点 | `rehype-slug` 自动加 `id` | `/posts/gfm-test` |
+| 15 | 自定义组件 | `mdx-components.tsx` 映射表 | `/posts/hello` |
+| 16 | SEO 元数据 | frontmatter → `generateMetadata` → `<title>` | 任意文章 |
+
+#### 基座文件清单（18 个文件，复制走即可）
+
+| 文件 | 职责 | 必需 |
+|---|---|---|
+| `lib/posts.ts` | **核心**：递归扫描、元数据合并、分类树、草稿过滤、分页、相邻文章 | ✅ |
+| `lib/search.ts` | 构建期搜索索引 + Markdown → 纯文本 | 搜索时需要 |
+| `lib/site.ts` | 站点常量（URL / 名称 / 描述） | RSS / sitemap 需要 |
+| `mdx-components.tsx` | MDX 组件映射表（标题、链接、自定义组件） | ✅ |
+| `components/mdx/Callout.tsx` | 示例自定义组件（可删） | 可选 |
+| `app/posts/page.tsx` | 文章列表页（分类 / 标签导航） | ✅ |
+| `app/posts/[...slug]/page.tsx` | 文章详情页 | ✅ |
+| `app/posts/page/[n]/page.tsx` | 分页页 | 分页时需要 |
+| `app/category/[...category]/page.tsx` | 分类页（多级 + 面包屑） | 分类时需要 |
+| `app/tags/page.tsx` | 标签索引页 | 标签时需要 |
+| `app/tags/[tag]/page.tsx` | 单标签页 | 标签时需要 |
+| `app/search/page.tsx` | 搜索页（Server Component） | 搜索时需要 |
+| `app/search/SearchClient.tsx` | 搜索交互（客户端） | 搜索时需要 |
+| `app/rss.xml/route.ts` | RSS 2.0 输出 | RSS 时需要 |
+| `content/**` | **你的文章**（示例可全删） | ✅ |
+| `next.config.ts` | MDX 启用 + 插件链（见 §11.9） | ✅ |
+| `app/globals.css` | `@plugin "@tailwindcss/typography"`（正文排版） | ✅ |
+| `app/layout.tsx` | `alternates.types`（RSS 自动发现） | RSS 时需要 |
+
+#### 5 分钟移植指南
+
+把基座搬到另一个 Next.js 16 项目：
+
+```bash
+# ── 1. 复制基座文件 ──────────────────────────────────────────
+mkdir -p content lib components/mdx
+mkdir -p app/posts/page app/category app/tags app/search app/rss.xml
+mkdir -p "app/posts/[...slug]" "app/posts/page/[n]" "app/category/[...category]" "app/tags/[tag]"
+
+cp lib/posts.ts lib/search.ts lib/site.ts       ./
+cp mdx-components.tsx ./
+cp -r components/mdx ./
+cp app/posts/page.tsx             app/posts/
+cp "app/posts/[...slug]/page.tsx" app/posts/
+cp app/posts/page/[n]/page.tsx    app/posts/page/
+cp "app/category/[...category]/page.tsx" app/category/
+cp app/tags/page.tsx              app/tags/
+cp "app/tags/[tag]/page.tsx"      app/tags/
+cp app/search/page.tsx            app/search/
+cp app/search/SearchClient.tsx    app/search/
+cp app/rss.xml/route.ts           app/rss.xml/
+
+# ── 2. 装依赖 ────────────────────────────────────────────────
+pnpm add @next/mdx @mdx-js/loader @mdx-js/react \
+  remark-gfm remark-frontmatter remark-mdx-frontmatter \
+  rehype-slug rehype-pretty-code shiki gray-matter fuse.js
+
+# ── 3. 改 next.config.ts ─────────────────────────────────────
+#    启用 MDX + 插件链（完整代码见 §11.9）
+#    关键两项：createMDX({ extension: /\.(md|mdx)$/ }) + pageExtensions 含 'md'/'mdx'
+
+# ── 4. 改 app/globals.css ───────────────────────────────────
+#    加一行（Tailwind v4 用 @plugin 指令引插件）：
+#    @plugin "@tailwindcss/typography";
+
+# ── 5. 放文章 ────────────────────────────────────────────────
+mkdir -p content/tech
+cat > content/tech/hello.mdx <<'MDX'
+---
+title: "第一篇"
+date: "2026-11-03"
+tags: ["随笔"]
+---
+
+# 第一篇
+
+正文，支持 **Markdown** 与 JSX。
+MDX
+
+# ── 6. 构建 ──────────────────────────────────────────────────
+pnpm build && pnpm start
+# → /posts/tech/hello  /category/tech  /tags/随笔  /search  /rss.xml  全部可用
+```
+
+#### 移植后你要改的 3 个地方
+
+| # | 位置 | 改什么 |
+|---|---|---|
+| 1 | `lib/site.ts` | `SITE_URL`（可改用 `NEXT_PUBLIC_SITE_URL` 环境变量）、`SITE_NAME`、`SITE_DESCRIPTION` |
+| 2 | `app/globals.css` | 主题色变量（`--color-*`），以及字体（`next/font`，见 [§4.13](#413-样式体系tailwind-v4-css-first)） |
+| 3 | `content/` | 删掉示例文章，换成你自己的 |
+
+> **路由前缀可改**：默认文章在 `/posts`、分类在 `/category`、标签在 `/tags`。
+> 想改成 `/blog` / `/topics` / `/labels`，改目录名 + 页面里的 `href` 即可
+> （都是相对写法，不涉及 `next.config.ts`）。
+
+#### 这个基座**不**做什么（以及为什么）
+
+| 不做 | 原因 | 想做的话 |
+|---|---|---|
+| 全文索引服务 | 索引内联进页面（12 篇 → 20KB），几百篇后偏大 | 改成「构建期生成静态 JSON + 客户端 fetch」 |
+| 评论系统 | 与内容层无关 | 第三方服务（utterances / giscus） |
+| 访问计数 | 同上 | Vercel Analytics / 自建 |
+| 草稿预览 | 需要 `draft: true` 时反而生成路由 | 复制 `content/` 到 `preview-content/` 并切换目录 |
+| 多语言 | 每篇一个 locale 字段即可扩展 | frontmatter 加 `locale`，扫描时分组 |
+| 协同编辑 | Git 天然支持 | 直接用 GitHub PR 流程 |
+| 图片优化 | MDX 里直接用 `next/image` | 见 [§4.14](#414-图片优化nextimage-与-sizes) |
+
+> **刻意不做的原因**：这个基座的定位是「**内容层**」。
+> 评论、计数、后台管理这些属于「应用层」，应该由你按业务需要叠加，
+> 而不是塞进一个「什么都有但什么都不精」的框架里。
+
+---
+
+### 实现细节
+
+> 下面是基座的**实现细节** —— 每一项能力怎么做的、踩过哪些坑。
+> 如果你只是要**用它**，到上面 §11.0 就够了；想**改造它**，接着往下看。
 
 > **先回答一个常见疑问**：`@next/mdx` 支不支持「把写好的 markdown 放进某个目录，自动解析成文章」？
 >
@@ -1948,13 +2130,13 @@ pnpm build
 | 路由 / 分类 / 列表 | 递归扫描 + catch-all | §11.6 |
 | 元数据 | YAML frontmatter | §11.7 |
 | GFM / 代码高亮 / 锚点 | remark + rehype 插件链 | §11.9 |
-| RSS 订阅源 | Route Handler 产出 RSS 2.0 | §11.11 |
-| 标签页 | `/tags` + `/tags/<tag>` | §11.11 |
-| 上一篇 / 下一篇 | `getAdjacentPosts()` | §11.11 |
-| 草稿机制 | `draft: true` 完全排除 | §11.11 |
-| **多级分类** | `content/a/b/` → `/category/a/b` | [§11.12](#1112-多级分类路径分页与全文搜索) |
-| **分页** | 路径分页 `/posts/page/2` | §11.12 |
-| **全文搜索** | 构建期索引 + 子串匹配 + Fuse.js | §11.12 |
+| RSS 订阅源 | Route Handler 产出 RSS 2.0 | §11.10 |
+| 标签页 | `/tags` + `/tags/<tag>` | §11.10 |
+| 上一篇 / 下一篇 | `getAdjacentPosts()` | §11.10 |
+| 草稿机制 | `draft: true` 完全排除 | §11.10 |
+| **多级分类** | `content/a/b/` → `/category/a/b` | [§11.11](#1111-多级分类路径分页与全文搜索) |
+| **分页** | 路径分页 `/posts/page/2` | §11.11 |
+| **全文搜索** | 构建期索引 + 子串匹配 + Fuse.js | §11.11 |
 
 > 剩下的只有「换框架」级别的事：文章上千篇后把搜索索引改成
 > 构建期静态 JSON + 按需 fetch，或直接上 Fumadocs / Nextra。
@@ -1962,7 +2144,7 @@ pnpm build
 ### 11.7 元数据：YAML frontmatter（业界主流）
 
 > ⚠️ **本节结论已修正。** 上一版写的是「`.md` 不支持元数据，必须用 `.json` 旁路」——
-> 那是在**还没配 remark 插件链**时的实测结论。配置插件链后（见 §11.10），
+> 那是在**还没配 remark 插件链**时的实测结论。配置插件链后（见 §11.9），
 > **`.md` 和 `.mdx` 都能用 YAML frontmatter**，这才是业界主流做法。
 
 **先分清两个层次**：
@@ -2136,7 +2318,7 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 本仓库走 **JS 插件链** —— 可组合性最好，生态最全。
 
 
-### 11.11 博客标配四件套：RSS / 标签 / 上一篇下一篇 / 草稿
+### 11.10 博客标配四件套：RSS / 标签 / 上一篇下一篇 / 草稿
 
 这一节把「能当博客底座」的最后四块拼图补齐。
 
@@ -2260,7 +2442,7 @@ export function getPostFiles(): PostFile[] {
 > 返回 `notFound()` 界面 —— 但**状态码是 200 而不是 404**，
 > 这正是 [§4.27](#427-实测坑点ppr-模式下-notfound-返回-200) 那个 PPR 坑点。
 
-### 11.12 多级分类、路径分页与全文搜索
+### 11.11 多级分类、路径分页与全文搜索
 
 最后三块拼图。
 
@@ -2408,7 +2590,7 @@ const byFuzzy = fuse.search(q).map((r) => ({ doc: r.item, score: 30 }));
 > ⚠️ 索引体积随文章数线性增长（本仓库 12 篇 → 20KB）。
 > 几百篇以后建议改成「构建期生成静态 JSON + 客户端按需 fetch」。
 
-### 11.10 验证入口
+### 11.12 验证入口
 
 | 地址 | 看什么 |
 |---|---|
