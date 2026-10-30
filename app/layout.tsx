@@ -4,6 +4,8 @@ import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+import { jsonLdScript, websiteJsonLd } from "@/lib/seo";
+import SearchShortcut from "@/components/search/SearchShortcut";
 
 export const metadata: Metadata = {
   title: {
@@ -40,7 +42,13 @@ export default function DashboardLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <main className="bg-white text-black dark:bg-black dark:text-white">
+          {/* 全站搜索快捷键（/ 聚焦 · ⌘K 跳转） */}
+        <SearchShortcut />
+
+        {/* 站点级 JSON-LD：WebSite + SearchAction（声明站内搜索） */}
+        {jsonLdScript(websiteJsonLd())}
+
+        <main className="bg-white text-black dark:bg-black dark:text-white">
             {/* 加载平行路由 */}
             {team}
             {children}

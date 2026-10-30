@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { buildSearchIndex } from "@/lib/search";
 import SearchClient from "./SearchClient";
 
@@ -30,7 +31,12 @@ export default async function SearchPage() {
       </header>
 
       <div className="mt-6">
-        <SearchClient docs={docs} />
+        {/* ⚠️ SearchClient 用了 useSearchParams（读 ?q=），
+            静态预渲染的页面必须用 <Suspense> 包住，否则构建报
+            "useSearchParams() should be wrapped in a suspense boundary"。 */}
+        <Suspense fallback={<div className="text-sm opacity-60">读取搜索词…</div>}>
+          <SearchClient docs={docs} />
+        </Suspense>
       </div>
 
       <p className="mt-10 text-sm">

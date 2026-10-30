@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPostPage } from "@/lib/posts";
 
 /**
@@ -26,9 +26,15 @@ export async function generateStaticParams() {
   //    （比「保守估计 50 页」好：不会生成一堆 404 路由）
   const info = await getPostPage(1);
   // 从第 2 页开始 —— 第 1 页就是 /posts，不重复生成
-  return Array.from({ length: Math.max(0, info.totalPages - 1) }, (_, i) => ({
+  const pages = Array.from({ length: Math.max(0, info.totalPages - 1) }, (_, i) => ({
     n: String(i + 2),
   }));
+
+  // ⚠️ Cache Components 要求 generateStaticParams 至少返回一个结果，
+  //    否则构建期报 "all generateStaticParams functions must return at least one result"。
+  //    「只有 1 页」时也要吐一个 —— 这里给第 1 页，
+  //    页面内部会把它重定向到 /posts（不产生重复内容）。
+  return pages.length > 0 ? pages : [{ n: "1" }];
 }
 
 export async function generateMetadata({
@@ -54,6 +60,11 @@ export default async function PostsPageN({
   const { n } = await params;
   const page = Number(n);
   const info = await getPostPage(page);
+
+  // 第 1 页就是 /posts —— 重定向过去，避免两份重复内容
+  if (page === 1) {
+    redirect("/posts");
+  }
 
   // 超出范围 → 404
   if (!Number.isFinite(page) || page < 1 || page > info.totalPages) {

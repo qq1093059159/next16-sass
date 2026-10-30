@@ -31,7 +31,9 @@ export async function generateMetadata({
 }: {
   params: Promise<{ category: string[] }>;
 }): Promise<Metadata> {
-  const { category } = await params;
+  const { category: raw } = await params;
+  // ⚠️ 动态段不做 percent-encoding 解码 —— 逐段自己解
+  const category = raw.map(decodeURIComponent);
   const path = category.join("/");
   const meta = getCategoryMeta(path);
   return {
@@ -45,7 +47,8 @@ export default async function CategoryPage({
 }: {
   params: Promise<{ category: string[] }>;
 }) {
-  const { category } = await params;
+  const { category: raw } = await params;
+  const category = raw.map(decodeURIComponent);
   const path = category.join("/");
   const categories = getCategories();
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAllTags, getCategories, getPostPage } from "@/lib/posts";
+import SearchBox from "@/components/search/SearchBox";
 
 /**
  * 文章列表页 —— 自动扫描 content/ 目录生成。
@@ -65,6 +66,9 @@ export default async function PostsIndex() {
         ) : null}
 
         <nav className="flex flex-wrap items-center gap-3 text-xs">
+          <Link href="/archive" className="underline">
+            归档
+          </Link>
           <Link href="/search" className="underline">
             搜索
           </Link>
@@ -75,6 +79,11 @@ export default async function PostsIndex() {
             RSS 订阅
           </Link>
         </nav>
+      </div>
+
+      {/* 搜索框：按 / 快捷键可聚焦到这里 */}
+      <div className="mt-6 max-w-sm">
+        <SearchBox placeholder="搜索标题、标签、摘要与正文…  （按 / 聚焦）" />
       </div>
 
       <ul className="mt-8 flex flex-col gap-4">

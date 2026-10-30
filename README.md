@@ -23,7 +23,7 @@
 | **规模** | 61 个路由目录 · 28 个知识点主题 · 95 个构建产物页面 |
 | **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
 | **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
-| **⭐ 核心产出** | **[第十一章 · 内容引擎基座](#十一内容引擎文章站--博客站基座)** —— 把 .md/.mdx 丢进 `content/` 即成文章站（16 项能力 · 18 个文件 · 5 分钟移植到你的项目） |
+| **⭐ 核心产出** | **[第十一章 · 内容引擎基座](#十一内容引擎文章站--博客站基座)** —— 把 .md/.mdx 丢进 `content/` 即成文章站（24 项能力 · 5 分钟移植）。可运行实例见 `web/` |
 
 **目录骨架**（到分组为止，细节见[第三章](#三路由全景地图)）：
 
@@ -66,7 +66,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
 | [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
 | [**十、doc/ 教学文档**](#十doc-教学文档25-课体系) | **25 课教学拆解**：概念 + 真实代码 + 动手实验 + 自检 | 想系统跟着学 |
-| [**十一、内容引擎：文章站 / 博客站基座**](#十一内容引擎文章站--博客站基座) | ⭐ **本仓库核心产出**：把 .md/.mdx 丢进 `content/` 即成文章站。16 项能力 · 18 个文件 · 5 分钟移植 | **想搭博客/文章站/文档站** |
+| [**十一、内容引擎：文章站 / 博客站基座**](#十一内容引擎文章站--博客站基座) | ⭐ **本仓库核心产出**：把 .md/.mdx 丢进 `content/` 即成文章站。24 项能力 · 24 个文件 · 5 分钟移植 · 业界对标 | **想搭博客/文章站/文档站** |
 
 ---
 
@@ -1739,7 +1739,7 @@ eslint          9.39.2
 **你只需要做一件事**：往 `content/` 里放 `.md` / `.mdx` 文件。
 路由、列表、分类、标签、搜索、RSS、草稿过滤 —— 全部自动。
 
-#### 能力清单（16 项，全部在本仓库实测通过）
+#### 能力清单（24 项，全部在本仓库实测通过）
 
 | # | 能力 | 实现方式 | 验证入口 |
 |---|---|---|---|
@@ -1759,12 +1759,26 @@ eslint          9.39.2
 | 14 | 标题锚点 | `rehype-slug` 自动加 `id` | `/posts/gfm-test` |
 | 15 | 自定义组件 | `mdx-components.tsx` 映射表 | `/posts/hello` |
 | 16 | SEO 元数据 | frontmatter → `generateMetadata` → `<title>` | 任意文章 |
+| 17 | **JSON-LD 结构化数据** | `WebSite` + `BlogPosting` + `BreadcrumbList` | 任意文章的 `<head>` |
+| 18 | **文章级动态 OG 图** | `/og/<slug>` → 1200×630 PNG | `/og/tech/ssg-deep-dive` |
+| 19 | **canonical / OG / Twitter** | `alternates.canonical` + `openGraph` | 任意文章源码 |
+| 20 | **目录（TOC）** | 构建期解析 Markdown，锚点与正文**完全一致** | `/posts/tech/ssg-deep-dive` 右侧 |
+| 21 | **阅读时长** | 中英加权公式（非「词数/200」） | 任意文章 byline |
+| 22 | **相关文章** | 按**共同标签数**排序 | 任意文章底部 |
+| 23 | **归档页** | 按年月分组全部文章 | `/archive` |
+| 24 | **搜索快捷键 + 可分享** | `/` 聚焦、`⌘K` 跳转、`?q=` 分享 | `/search?q=缓存` |
 
 #### 基座文件清单（18 个文件，复制走即可）
 
 | 文件 | 职责 | 必需 |
 |---|---|---|
-| `lib/posts.ts` | **核心**：递归扫描、元数据合并、分类树、草稿过滤、分页、相邻文章 | ✅ |
+| `lib/posts.ts` | **核心**：递归扫描、元数据合并、分类树、草稿过滤、分页、相邻文章、相关文章、归档 | ✅ |
+| `lib/seo.ts` | JSON-LD 结构化数据生成器（WebSite / BlogPosting / BreadcrumbList） | ✅ |
+| `lib/toc.ts` | 从 Markdown 提取目录（remark 解析 + github-slugger） | TOC 需要时 |
+| `lib/reading-time.ts` | 阅读时长（中英加权公式） | ✅ |
+| `components/toc/index.tsx` | 目录客户端组件（滚动高亮 + 吸顶） | TOC 需要时 |
+| `components/search/SearchShortcut.tsx` | 全站快捷键（`/` 与 `⌘K`） | ✅ |
+| `components/search/SearchBox.tsx` | 站内搜索框（Enter 跳 `/search?q=`） | ✅ |
 | `lib/search.ts` | 构建期搜索索引 + Markdown → 纯文本 | 搜索时需要 |
 | `lib/site.ts` | 站点常量（URL / 名称 / 描述） | RSS / sitemap 需要 |
 | `mdx-components.tsx` | MDX 组件映射表（标题、链接、自定义组件） | ✅ |
@@ -1778,6 +1792,8 @@ eslint          9.39.2
 | `app/search/page.tsx` | 搜索页（Server Component） | 搜索时需要 |
 | `app/search/SearchClient.tsx` | 搜索交互（客户端） | 搜索时需要 |
 | `app/rss.xml/route.ts` | RSS 2.0 输出 | RSS 时需要 |
+| `app/og/[...slug]/route.tsx` | 文章级动态 OG 图（ImageResponse） | OG 需要时 |
+| `app/archive/page.tsx` | 归档页（按年月分组） | 归档需要时 |
 | `content/**` | **你的文章**（示例可全删） | ✅ |
 | `next.config.ts` | MDX 启用 + 插件链（见 §11.9） | ✅ |
 | `app/globals.css` | `@plugin "@tailwindcss/typography"`（正文排版） | ✅ |
@@ -2589,6 +2605,54 @@ const byFuzzy = fuse.search(q).map((r) => ({ doc: r.item, score: 30 }));
 
 > ⚠️ 索引体积随文章数线性增长（本仓库 12 篇 → 20KB）。
 > 几百篇以后建议改成「构建期生成静态 JSON + 客户端按需 fetch」。
+
+### 11.13 与业界基座的对标
+
+这个基座不是凭空设计的 —— 功能集对照 **Fumadocs / Nextra / Docusaurus** 这三个成熟框架的公共能力。
+
+| 能力 | Fumadocs | Nextra | Docusaurus | 本基座 |
+|---|---|---|---|---|
+| MDX + 自定义组件 | ✅ | ✅ | ✅ | ✅ |
+| 语法高亮 | ✅ | ✅ | ✅ | ✅（Shiki，编译期） |
+| 全文搜索 | ✅ | ✅ | ✅（Algolia） | ✅（子串 + Fuse.js） |
+| 目录（TOC） | ✅ | ✅ | ✅ | ✅ |
+| 明/暗模式 | ✅ | ✅ | ✅ | ⚠️ 靠 CSS 变量，未内置切换按钮 |
+| 静态生成 | ✅ | ✅ | ✅ | ✅ |
+| SEO 元数据 | ✅ | ✅ | ✅ | ✅（+ JSON-LD） |
+| 动态 OG 图 | ✅ | ✅ | ⚠️ | ✅ |
+| 归档页 | ✅ | ✅ | ✅ | ✅ |
+| 作者页 | ✅ | ✅ | ✅ | ⚠️ 未做（frontmatter 有 author 字段） |
+| 文档版本化 | ❌ | ⚠️ | ✅ | ❌ |
+| 国际化（i18n） | ✅ | ✅ | ✅ | ❌ |
+| 远程内容源（CMS） | ✅ | ⚠️ | ❌ | ❌ |
+| llms.txt（给 AI 爬虫） | ✅ | ❌ | ❌ | ❌ |
+| Git 最后编辑时间 | ✅ | ✅ | ✅ | ❌ |
+
+**三条设计取舍**：
+
+1. **只做「内容层」，不做「应用层」**
+   评论、访问计数、后台管理、登录 —— 这些属于你的业务，不该被塞进一个基座。
+   基座只保证「内容能进来、能被找到、能被读」。
+
+2. **宁可少而准，不做多而糙**
+   搜索用「中文子串匹配 + Fuse.js」而不是引入 Orama/Algolia ——
+   因为中文分词是 Orama 之类方案的软肋，而子串匹配 100% 可靠。
+   等文章上千篇、真的需要容错检索时再换。
+
+3. **零框架依赖**
+   不绑 Fumadocs / Nextra / Docusaurus。你拿走这 24 个文件，
+   就是拿走一个「有明确边界的工具」，而不是「一个什么都有但什么都不精的框架」。
+
+**还没做但值得加的**（按性价比）：
+
+| 能力 | 成本 | 价值 |
+|---|---|---|
+| 深色模式切换按钮 | 低（`next-themes`） | 业界标配，用户预期 |
+| 作者页 | 低（`/author/[name]`） | 团队博客必备 |
+| 代码块复制按钮 | 中（自定义 rehype 插件 + 客户端组件） | 文档站高频需求 |
+| `llms.txt` | 低（一个 Route Handler） | 给 AI 爬虫的站点摘要，前沿趋势 |
+| Git 最后编辑时间 | 低（`git log` + 构建期读取） | 让读者知道内容新鲜度 |
+| 文档版本化 | 高 | 需要快照机制，慎入 |
 
 ### 11.12 验证入口
 

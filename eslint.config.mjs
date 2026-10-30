@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // web/ 是独立的子项目（内容引擎基座示例），有自己的 eslint 与 node_modules
+    "web/**",
   ]),
 ]);
 

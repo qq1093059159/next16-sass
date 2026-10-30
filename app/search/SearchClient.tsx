@@ -3,6 +3,7 @@
 import Fuse from "fuse.js";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { SearchDoc } from "@/lib/search";
 
 /**
@@ -17,7 +18,9 @@ import type { SearchDoc } from "@/lib/search";
  *   标题 100 · 标签 60 · 摘要 40 · 正文 20
  */
 export default function SearchClient({ docs }: { docs: SearchDoc[] }) {
-  const [query, setQuery] = useState("");
+  // 从 URL 读初始关键词 —— 这样 /search?q=xxx 可以直接分享
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
 
   const fuse = useMemo(
     () =>

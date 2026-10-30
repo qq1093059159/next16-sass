@@ -36,8 +36,14 @@ const META_PREFIX = "_";
 export type PostMeta = {
   title: string;
   date?: string;
+  /** 最后更新时间（SEO 的 dateModified 用） */
+  updated?: string;
   excerpt?: string;
   tags?: string[];
+  /** 作者（SEO 的 author 用） */
+  author?: string;
+  /** 封面图（OG 图与列表页用） */
+  cover?: string;
   /** 草稿：true 时不生成路由、不出现在任何列表里 */
   draft?: boolean;
 };
@@ -410,4 +416,87 @@ export function getCategoryMeta(category: string): CategoryMeta {
   } catch {
     return {};
   }
+}
+
+/**
+ * 读某篇文章的源文件（去掉 frontmatter 的正文原文）。
+ *
+ * TOC 提取、阅读时长这类「需要看源码」的功能都走这里。
+ */
+export function getPostSource(slug: string): string {
+  const entry = getPostFiles().find((p) => p.slug === slug);
+  if (!entry) return "";
+  try {
+    const full = path.join(POSTS_DIR, entry.file);
+    return matter(fs.readFileSync(full, "utf-8")).content;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 相关文章 —— 按「共同标签数」排序，取前 limit 篇。
+ *
+ * 标签重合度越高越相关 —— 这比「同分类」更精准
+ * （同一分类里可能有毫不相关的文章）。
+ */
+export async function getRelatedPosts(
+  slug: string,
+  limit = 3,
+): Promise<(PostMeta & { slug: string })[]> {
+  const all = await getAllPostMeta();
+  const current = all.find((p) => p.slug === slug);
+  if (!current) return [];
+
+  const currentTags = new Set(current.tags ?? []);
+
+  return all
+    .filter((p) => p.slug !== slug)
+    .map((p) => ({
+      post: p,
+      score: (p.tags ?? []).filter((t) => currentTags.has(t)).length,
+    }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || (b.post.date ?? "").localeCompare(a.post.date ?? ""))
+    .slice(0, limit)
+    .map((x) => x.post);
+}
+
+/**
+ * 归档 —— 按年月分组所有文章。
+ *
+ * 返回结构：[{ year: "2026", months: [{ month: "11", posts: [...] }] }]
+ * 月份倒序（新的在前）。
+ */
+export async function getArchive(): Promise<
+  {
+    year: string;
+    months: {
+      month: string;
+      posts: (PostMeta & { slug: string; category?: string })[];
+    }[];
+  }[]
+> {
+  const all = await getAllPostMeta();
+  const byYear = new Map<string, Map<string, (PostMeta & { slug: string })[]>>();
+
+  for (const post of all) {
+    const d = post.date ? new Date(post.date) : null;
+    if (!d || Number.isNaN(d.getTime())) continue;
+    const year = String(d.getFullYear());
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    if (!byYear.has(year)) byYear.set(year, new Map());
+    const months = byYear.get(year)!;
+    if (!months.has(month)) months.set(month, []);
+    months.get(month)!.push(post);
+  }
+
+  return [...byYear.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([year, months]) => ({
+      year,
+      months: [...months.entries()]
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([month, posts]) => ({ month, posts })),
+    }));
 }

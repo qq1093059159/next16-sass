@@ -24,7 +24,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ tag: string }>;
 }): Promise<Metadata> {
-  const { tag } = await params;
+  // ⚠️ Next.js 对动态段【不做 percent-encoding 解码】——
+  //    params.tag 拿到的是 "%E6%95%99%E7%A8%8B" 这种原始编码串。
+  //    必须自己 decodeURIComponent，否则中文标签永远匹配不上。
+  const { tag: raw } = await params;
+  const tag = decodeURIComponent(raw);
   return {
     title: `标签：${tag}`,
     description: `带「${tag}」标签的所有文章`,
@@ -36,7 +40,8 @@ export default async function TagPage({
 }: {
   params: Promise<{ tag: string }>;
 }) {
-  const { tag } = await params;
+  const { tag: raw } = await params;
+  const tag = decodeURIComponent(raw);
   const allTags = await getAllTags();
 
   // 没有这个标签 → 404
