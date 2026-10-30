@@ -75,6 +75,104 @@ export default nextConfig;
 > ```
 > **本仓库的缓存开关已经不可逆。**
 
+### ⚠️ 另一条强制约束：`params` 必须包在 `<Suspense>` 里
+
+开启 `cacheComponents` 后，还有一条**构建期不报错、dev 下才暴露**的约束：
+
+```text
+Error: Route "/tags/[tag]": Next.js encountered runtime data during prerendering.
+
+`cookies()`, `headers()`, `params`, or `searchParams` accessed outside of
+`<Suspense>` prevents the route from being prerendered, blocking the page load
+and leading to a slower user experience.
+
+Ways to fix this:
+  - [stream] Provide a placeholder with `<Suspense fallback={...}>` around the data access
+  - [block] Set `export const instant = false` to allow a blocking route
+```
+
+### 为什么会这样
+
+`cacheComponents`（Cache Components / PPR）的本质是：**页面要能被预渲染成静态壳**。
+而 `params` / `searchParams` / `cookies()` / `headers()` 是「运行时数据」——
+在 `<Suspense>` 之外读它们，Next 就无法确定静态壳长什么样，只能把整条路由降级成
+blocking（阻塞式渲染），于是报错。
+
+> ⚠️ **迷惑点：build 能过，dev 才报错。**
+> 因为 `generateStaticParams()` 列出的参数可以被静态化；
+> 但 **dev 模式下 Next 还要渲染「任意参数」的兜底版本**，
+> 那就得读运行时 params → 触发 blocking。
+> 所以只在 build 里验证是**发现不了**这个问题的，必须在 dev 下访问
+> **一个 `generateStaticParams` 里没有的参数**。
+
+实测（本仓库）：访问 `/tags/教程`（在枚举内）不报错，
+访问 `/tags/zzz`（枚举外）立刻报错。
+
+### 修法一（推荐）：Suspense 包裹
+
+关键在**页面组件不 `await params`，只把 Promise 往下传**，
+真正 `await` 的 async 子组件放进 `<Suspense>` 内部：
+
+```tsx
+import { Suspense } from "react";
+
+export default function TagPage({ params }: { params: Promise<{ tag: string }> }) {
+  return (
+    <div className="mx-auto max-w-2xl p-6">
+      <Suspense fallback={<TagSkeleton />}>
+        <TagContent params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** 真正读 params 的部分 —— 必须在 <Suspense> 内部 */
+async function TagContent({ params }: { params: Promise<{ tag: string }> }) {
+  const { tag } = await params;
+  // …渲染…
+  return <>…</>;
+}
+```
+
+这样 Next 知道「这段数据在 Suspense 边界内读取」，
+静态壳照常预渲染（`◐`），内容流式补上。
+
+### 修法二：允许阻塞
+
+```tsx
+export const instant = false;
+```
+
+整条路由变成 blocking 渲染 —— 能跑，但失去预渲染能力，首屏变慢。
+
+### ⚠️ 修法一的副作用：404 状态码会变成 200
+
+这是 PPR 的固有取舍，值得单独记一笔：
+
+| 写法 | 枚举内参数 | 枚举外参数（不存在） |
+|---|---|---|
+| 原始写法（无 Suspense） | `○` 静态页 | **404** ✓ 状态码正确 |
+| 加 Suspense 后 | `◐` 静态壳 + 流式 | **200** ✗（页面显示 404，状态码是 200） |
+
+原因：Suspense 让响应**先流式输出静态壳**，此时 HTTP 状态码已经锁定为 200，
+后续补上的 404 界面改不了状态码。
+
+> 这与第 06 课的坑是**同一个**（PPR 壳子锁定状态码）。
+> **依赖状态码做判断的场景**（SEO、监控、客户端重试）要留意：
+> 内容站宁可「软 404」也要保住静态预渲染，是常见的取舍。
+
+### 本仓库的修复清单
+
+| 文件 | 路由 |
+|---|---|
+| `app/tags/[tag]/page.tsx` | `/tags/<标签>` |
+| `app/author/[name]/page.tsx` | `/author/<作者>` |
+| `app/category/[...category]/page.tsx` | `/category/<多级分类>` |
+| `app/posts/[...slug]/page.tsx` | `/posts/<路径>` |
+| `app/posts/page/[n]/page.tsx` | `/posts/page/<页码>` |
+| `app/(dashboard)/dashboard/users/[id]/page.tsx` | `/dashboard/users/<id>` |
+| `app/(root)/intercepting/photo/[id]/page.tsx` | `/intercepting/photo/<id>` |
+
 ---
 
 ## 三、真实代码：同页对照
@@ -322,6 +420,7 @@ async function getCachedName(fn: () => void) {
 
 | 错误 | 后果 | 正确做法 |
 |---|---|---|
+| 在 `<Suspense>` 外 `await params` | Blocking Route 报错，路由无法预渲染 | 页面组件不 await params，把 Promise 传给 Suspense 内的 async 子组件 |
 | 忘了开 `cacheComponents` | 构建失败 | 开关是 `"use cache"` 的硬前提 |
 | 开了开关还用 `export const dynamic` | 构建失败 | 改用 `await connection()` |
 | `"use cache"` 放在函数体中间 | 指令失效 / 报错 | 必须是函数体**第一行** |
@@ -332,6 +431,11 @@ async function getCachedName(fn: () => void) {
 ---
 
 ## 七、自检
+
+1. 开了 `cacheComponents` 后，为什么在 `<Suspense>` 外 `await params` 会让路由无法预渲染？
+2. 为什么这个问题 **build 能过、dev 才报错**？验证时该访问什么 URL？
+3. `params` 应该由哪一层组件 `await`？
+4. 加了 Suspense 之后，不存在的文章返回的状态码变成了多少？为什么？
 
 1. 开启 `cacheComponents` 后，三个段级配置分别被什么替代？
 2. `cacheLife` 的 `stale` / `revalidate` / `expire` 分别是谁在用？

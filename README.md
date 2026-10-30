@@ -1100,6 +1100,42 @@ export default async function DynamicPart() {
 
 `◐` = **部分预渲染（PPR）**：静态壳子直出，动态部分流式追加。这是 Next 16 的默认形态。
 
+#### ⚠️ 开启后的第二条硬约束：`params` 必须包在 `<Suspense>` 里
+
+```text
+Error: Route "/tags/[tag]": Next.js encountered runtime data during prerendering.
+
+`cookies()`, `headers()`, `params`, or `searchParams` accessed outside of `<Suspense>`
+prevents the route from being prerendered, blocking the page load...
+```
+
+`cacheComponents` 的本质是「页面要能预渲染成静态壳」，而 `params` 是运行时数据 ——
+在 `<Suspense>` 之外读它，整条路由只能降级成阻塞渲染。
+
+**修法**（页面组件不 `await params`，只把 Promise 往下传）：
+
+```tsx
+export default function TagPage({ params }: { params: Promise<{ tag: string }> }) {
+  return (
+    <div className="mx-auto max-w-2xl p-6">
+      <Suspense fallback={<TagSkeleton />}>
+        <TagContent params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function TagContent({ params }: { params: Promise<{ tag: string }> }) {
+  const { tag } = await params;   // ← 在 Suspense 内部才 await
+  return <>…</>;
+}
+```
+
+> ⚠️ **build 能过、dev 才报错** —— dev 还要渲染「任意参数」的兜底版本。
+> 验证时必须访问一个 **`generateStaticParams` 里没有的参数**（如 `/tags/zzz`）。
+> 代价：加 Suspense 后枚举外参数的 404 状态码会变成 200（PPR 壳子锁定状态码，
+> 与第 06 课同一个坑）。完整推导见 [第 10 课](doc/10_CacheComponents缓存模型.md)。
+
 ### 4.17 静态生成与 ISR：generateStaticParams
 
 `app/(root)/ssg/[id]/page.tsx` 演示三个知识点：

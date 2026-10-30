@@ -448,6 +448,12 @@ export const knowledgeMap: KnowledgeSection[] = [
         desc: "动态 import 表达式会被编译成目录 context map，key 是完整路径。写死 .mdx 会导致 .md 文件找不到（报 Cannot find module）；应传含扩展名的完整文件名，并优先用 @/ 别名而非相对路径。",
       },
       {
+        name: "params 必须在 Suspense 内读取",
+        href: "/tags/教程",
+        file: "app/tags/[tag]/page.tsx · app/posts/[...slug]/page.tsx",
+        desc: "开了 cacheComponents 后，在 Suspense 外访问 params/searchParams/cookies/headers 会让整条路由无法预渲染（Blocking Route 报错）。⚠️ build 能过、dev 才报错 —— dev 还要渲染「任意参数」的兜底版本。修法：页面组件不 await params，把 Promise 传给 Suspense 内的 async 子组件。代价：枚举外参数的 404 状态码会变成 200（PPR 壳子锁定状态码）。",
+      },
+      {
         name: "Windows 路径分隔符会打断 import",
         href: "/posts/tech/nested-post",
         file: "lib/posts.ts",

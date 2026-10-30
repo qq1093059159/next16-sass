@@ -79,3 +79,24 @@
   （2.1.12，2026-08 活跃，本仓库已装）。
 - `fumadocs-core` 16.17.9 / `nextra` 4.6.1 —— 文档站框架，版本号跟 Next 对齐（活跃）。
 - `@next/mdx` npm 最新 16.4.3（本仓库装 ^16.1.3，可升）。
+
+## 主题（亮/暗模式）实现约定（2026-10-30 定，勿引入 next-themes）
+- **零第三方依赖**：自实现 `lib/theme.ts`（applyTheme / setTheme / toggleTheme /
+  themeInitScript）+ `components/theme/ThemeScript.tsx` + `ThemeToggle.tsx` + `DarkMode.tsx`。
+- **机制三层**：CSS 两套变量（`:root` / `.dark`）+ `applyTheme()` 打 class +
+  `<head>` 内联脚本防闪烁。`<html>` 必须 `suppressHydrationWarning`。
+- **铁律：主题状态不存 React state**。服务端读不到 localStorage，`useState` 与
+  `useSyncExternalStore` 都会 hydration mismatch（后者 getSnapshot 首帧即返回真实值）。
+  → 图标双份都在 DOM 靠 CSS `scale/rotate` 切换；菜单当前项靠
+  `:root[data-theme]` / `[data-theme-pref]` 选择器画 ✓。
+- CSS 变量**必须** `.dark` 类驱动，不能写 `@media (prefers-color-scheme: dark)`
+  （那样手动切换无效）。
+- 排查「组件能渲染但点了没反应」的第一步：确认 React 有没有 hydrate ——
+  `Object.keys(document.querySelector('button')).filter(k=>k.startsWith('__react'))` 为空即未 hydrate。
+  常见原因：dev 用 `127.0.0.1` 访问被 Next 拦截 dev 资源 → 需 `allowedDevOrigins` 或用 `localhost`。
+
+## 仓库结构（重要）
+- **`web/` 是独立的 git 仓库**（有自己的 `.git`），被主仓库 `.gitignore` 忽略 ——
+  主仓库保留一份供对照/回迁。**两边的改动必须分别提交**。
+- 主仓库 `content/` + `lib/posts.ts` + `app/posts/` 本身就是「内容引擎基座」本体，
+  `web/` 只是它的独立可运行实例。
