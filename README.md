@@ -1899,6 +1899,60 @@ export function generateStaticParams() {
 
 > 下划线开头的文件会被扫描器跳过（不当成文章），专供元数据使用。
 
+#### 「零配置」的准确承诺
+
+实测验收（新建 `content/news/`，放 3 篇文章，**没写一行路由代码**）：
+
+```bash
+mkdir -p content/news
+# 丢进 first-post.mdx / second-post.md / no-date-post.md
+pnpm build
+```
+
+构建产物自动多出：
+
+```text
+├ ○ /category/news                 ← 分类页自动出现
+│ ├ ○ /posts/news/first-post       ← 路由自动生成
+│ ├ ○ /posts/news/second-post
+│ └ ○ /posts/news/no-date-post
+```
+
+**✅ 自动完成的事**
+
+| 事项 | 结果 |
+|---|---|
+| 路由生成 | 文件相对路径 → URL（`content/news/a.mdx` → `/posts/news/a`） |
+| 分类页 | 子目录名 → `/category/<目录名>`，带文章计数 |
+| 分类导航 | 列表页顶部自动生成分类徽标 + 计数 |
+| 分类元数据 | `_meta.json` → 分类名与描述 |
+| 元数据 | YAML frontmatter → `title` / `date` / `excerpt` / `tags` |
+| 排序 | 按 `date` 倒序，**缺失 `date` 的自动沉底** |
+| 渲染 | GFM 表格 / 删除线 / 任务列表 / Shiki 代码高亮 / 标题锚点 |
+| SEO | `generateMetadata` 自动把 frontmatter 转成 `<title>` 等 |
+| 静态化 | 每篇文章都是 `○ Static`（构建期预渲染） |
+
+**⚠️ 三个使用约束**
+
+1. **必须重新 build** —— 目录扫描发生在构建期（`generateStaticParams`）。
+   开发时可用 `pnpm dev`（Turbopack 会增量重建），生产必须重新 `pnpm build`。
+2. **`.md` 与 `.mdx` 能力不同** —— `.mdx` 可写 JSX 与自定义组件；`.md` 只有纯 Markdown
+   （但 YAML frontmatter 两者都支持）。
+3. **文件名即 slug** —— 建议用英文/拼音短名。中文文件名也能用（URL 会被百分号编码，
+   实测 `<title>` 正常），但 URL 不够美观。
+
+**❌ 还不具备的（要自己加）**
+
+| 能力 | 说明 |
+|---|---|
+| 全文搜索 | 需要 Fuse.js / Orama / FlexSearch，或换 Fumadocs / Nextra |
+| RSS / Atom | 需要 `app/rss.xml/route.ts` 遍历 content/ 生成 |
+| 上一篇 / 下一篇 | 按 `date` 排序后取相邻元素 |
+| 标签页 | `tags` 已在 frontmatter 里，但还没有 `/tags/<tag>` 页面 |
+| 草稿 | 需要在 `getPostFiles()` 里过滤 `draft: true` |
+| 分页 | 列表页目前一次渲染全部 |
+| 多级分类 | `category` 取路径第一段，`content/a/b/c.mdx` 归到分类 `a` |
+
 ### 11.7 元数据：YAML frontmatter（业界主流）
 
 > ⚠️ **本节结论已修正。** 上一版写的是「`.md` 不支持元数据，必须用 `.json` 旁路」——
@@ -2082,6 +2136,8 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 |---|---|
 | <http://localhost:3000/posts> | 列表页 —— 自动列出所有文章 + 分类导航 |
 | <http://localhost:3000/category/tech> | 分类页 —— 列出 `content/tech/` 下的文章 |
+| <http://localhost:3000/category/news> | **第二个分类**（新建目录即出现，零配置） |
+| <http://localhost:3000/posts/news/first-post> | 新建分类后的首篇文章 |
 | <http://localhost:3000/posts/hello> | `.mdx` 文章（支持 JSX、自定义组件） |
 | <http://localhost:3000/posts/tech/nested-post> | **分类目录下的文章**（多段路径） |
 | <http://localhost:3000/posts/life/reading-notes> | **纯 `.md` 文章**（YAML frontmatter） |
