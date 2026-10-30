@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPostFiles, getPostMeta } from "@/lib/posts";
+import { getAdjacentPosts, getPostFiles, getPostMeta } from "@/lib/posts";
 
 /**
  * 文章详情页 —— catch-all 动态路由 + 动态 import。
@@ -48,8 +48,10 @@ export default async function PostPage({
   }
 
   const { default: Post } = await import(`@/content/${entry.file}`);
-  // 元数据统一从 getPostMeta 取（合并 .mdx export 与 .md 的 .json 旁路）
+  // 元数据统一从 getPostMeta 取（合并 frontmatter / 手写 export / .json 旁路）
   const metadata = await getPostMeta(entry.slug);
+  // 上一篇 / 下一篇（按日期排序后取相邻）
+  const { prev, next } = await getAdjacentPosts(entry.slug);
 
   return (
     <article className="mx-auto max-w-2xl p-6">
@@ -71,15 +73,56 @@ export default async function PostPage({
         <Post />
       </div>
 
-      <footer className="mt-10 flex items-center justify-between border-t border-gray-200 pt-4 text-sm opacity-60 dark:border-gray-700">
-        <Link href="/posts" className="underline">
-          ← 返回文章列表
-        </Link>
-        {entry.category ? (
-          <Link href={`/category/${entry.category}`} className="underline">
-            更多「{entry.category}」→
+      {/* 标签 */}
+      {metadata?.tags && metadata.tags.length > 0 ? (
+        <div className="mt-8 flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wider opacity-60">标签</span>
+          {metadata.tags.map((tag) => (
+            <Link
+              key={tag}
+              href={`/tags/${encodeURIComponent(tag)}`}
+              className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              {tag}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      <footer className="mt-10 border-t border-gray-200 pt-4 text-sm dark:border-gray-700">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            {prev ? (
+              <Link href={`/posts/${prev.slug}`} className="group block">
+                <span className="text-xs opacity-50">← 上一篇</span>
+                <span className="block truncate underline underline-offset-4">
+                  {prev.title}
+                </span>
+              </Link>
+            ) : null}
+          </div>
+          <div className="min-w-0 flex-1 text-right">
+            {next ? (
+              <Link href={`/posts/${next.slug}`} className="group block">
+                <span className="text-xs opacity-50">下一篇 →</span>
+                <span className="block truncate underline underline-offset-4">
+                  {next.title}
+                </span>
+              </Link>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between text-xs opacity-60">
+          <Link href="/posts" className="underline">
+            ← 返回文章列表
           </Link>
-        ) : null}
+          {entry.category ? (
+            <Link href={`/category/${entry.category}`} className="underline">
+              更多「{entry.category}」→
+            </Link>
+          ) : null}
+        </div>
       </footer>
     </article>
   );

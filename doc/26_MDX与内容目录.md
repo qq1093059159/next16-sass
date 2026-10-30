@@ -915,7 +915,125 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 
 ---
 
-## 十、常见错误
+## 十、博客标配四件套
+
+把「能当博客底座」的最后四块拼图补齐。
+
+### 10.1 RSS 订阅源（`app/rss.xml/route.ts`）
+
+```tsx
+export async function GET() {
+  const posts = await getAllPostMeta();
+  const xml = `<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${SITE_NAME}</title>
+    <link>${absoluteUrl("/")}</link>
+    <description>${SITE_DESCRIPTION}</description>
+    <atom:link href="${absoluteUrl("/rss.xml")}" rel="self" type="application/rss+xml" />
+${items}
+  </channel>
+</rss>`;
+  return new Response(xml, {
+    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
+  });
+}
+```
+
+**四个必须注意的点**：
+
+| 点 | 说明 |
+|---|---|
+| `<link>` / `<guid>` 必须是**绝对 URL** | 订阅器要靠它去抓正文，相对路径无效 |
+| `<pubDate>` 必须是 **RFC 822** 格式 | `new Date().toUTCString()`，**不是** ISO 8601 |
+| XML 特殊字符必须转义 | `&` `<` `>` `"` `'` → `&amp;` `&lt;` … |
+| `<atom:link rel="self">` | 让订阅器知道 feed 自己的地址 |
+
+用 Route Handler（而不是静态文件）的好处：**内容变了 feed 自动跟着变**。
+
+站点常量抽到 `lib/site.ts`，`sitemap.ts` / `robots.ts` / `rss.xml` 共用，
+`SITE_URL` 支持 `NEXT_PUBLIC_SITE_URL` 环境变量覆盖。
+
+### 10.2 标签页（`app/tags/`）
+
+```tsx
+// app/tags/[tag]/page.tsx
+export async function generateStaticParams() {
+  const tags = await getAllTags();
+  // ⚠️ 动态段的值必须是【字符串】—— 取 tag.name，不是整个对象
+  return tags.map((tag) => ({ tag: tag.name }));
+}
+```
+
+- 标签来自 frontmatter 的 `tags` 字段
+- **中文标签正常工作**：`/tags/性能` → 编码成 `/tags/%E6%80%A7%E8%83%BD`，
+  Next 自动解码 `params.tag`
+- `/tags` 索引页列出所有标签与文章数
+
+> ⚠️ **踩过的坑**：一开始写成 `tags.map((tag) => ({ tag }))`，
+> 构建直接报 `A required parameter (tag) was not provided as a string received object`。
+> 动态段的值必须是字符串。
+
+> 💡 `generateStaticParams` **可以是 async** —— 标签要读 frontmatter 才知道，
+> 直接 `await getAllTags()` 即可，不需要另写一个同步版本。
+
+### 10.3 上一篇 / 下一篇
+
+```ts
+export async function getAdjacentPosts(slug: string) {
+  const posts = await getAllPostMeta();   // 按 date 倒序（新的在前）
+  const index = posts.findIndex((p) => p.slug === slug);
+  return {
+    prev: toAdjacent(posts[index - 1]),   // 更新的那篇 = 上一篇
+    next: toAdjacent(posts[index + 1]),   // 更旧的那篇 = 下一篇
+  };
+}
+```
+
+列表是**新 → 旧**，所以数组里**前**一个是「上一篇」、**后**一个是「下一篇」。
+第一篇没有「上一篇」，最后一篇没有「下一篇」（渲染时留空）。
+
+### 10.4 草稿机制
+
+```md
+---
+title: "还在写：草稿示例"
+draft: true
+---
+```
+
+`draft: true` 的文章会被**完全排除**：
+
+| 位置 | 效果 |
+|---|---|
+| 路由 | **不生成**（`prerender-manifest.json` 里没有它） |
+| 文章列表页 | 不出现 |
+| 标签页 | 不出现 |
+| RSS | 不出现 |
+
+```ts
+export function isDraft(file: string): boolean {
+  const { data } = matter(fs.readFileSync(path.join(POSTS_DIR, file), "utf-8"));
+  return data.draft === true || data.draft === "true";
+}
+
+// 在扫描阶段就过滤掉
+export function getPostFiles(): PostFile[] {
+  return all.map(/* ... */).filter((p) => !isDraft(p.file)).sort(/* ... */);
+}
+```
+
+> **为什么用 gray-matter 而不是 import 编译产物？**
+> `isDraft()` 要在 `generateStaticParams` 里跑，import 每个 .mdx 会加载整个编译产物，慢得多。
+> gray-matter 直接读文件头部解析 YAML，代价几乎为零。
+
+**发布流程**：加 `draft: true` → 写完删掉 → `pnpm build` → 自动发布。
+
+> ⚠️ 访问草稿 URL 会命中动态 fallback，返回 `notFound()` 界面，
+> 但**状态码是 200** —— 这正是 [第 06 课](06_错误边界与404状态码.md) 讲的 PPR 坑点。
+---
+
+## 十一、常见错误
 
 | 错误 | 后果 | 正确做法 |
 |---|---|---|
@@ -936,7 +1054,7 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 
 ---
 
-## 十一、自检
+## 十二、自检
 
 1. `@next/mdx` 到底做了什么？它**不**做哪三件事？
 2. 动态 import 的 key 为什么必须是完整文件名？
@@ -957,7 +1075,7 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 
 ---
 
-## 十二、小结 & 下一步
+## 十三、小结 & 下一步
 
 - `@next/mdx` 是**编译期 loader**，遵循「一个文件 = 一个路由」，**不做目录扫描**。
 - 「目录即内容源」要自己补四件事：递归扫描 + 动态 import + 列表页 + 分类页。

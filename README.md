@@ -1946,12 +1946,11 @@ pnpm build
 | 能力 | 说明 |
 |---|---|
 | 全文搜索 | 需要 Fuse.js / Orama / FlexSearch，或换 Fumadocs / Nextra |
-| RSS / Atom | 需要 `app/rss.xml/route.ts` 遍历 content/ 生成 |
-| 上一篇 / 下一篇 | 按 `date` 排序后取相邻元素 |
-| 标签页 | `tags` 已在 frontmatter 里，但还没有 `/tags/<tag>` 页面 |
-| 草稿 | 需要在 `getPostFiles()` 里过滤 `draft: true` |
 | 分页 | 列表页目前一次渲染全部 |
 | 多级分类 | `category` 取路径第一段，`content/a/b/c.mdx` 归到分类 `a` |
+
+> 📌 **RSS / 标签页 / 上一篇下一篇 / 草稿机制已于 2026-10-30 补齐**，
+> 详见 [§11.11](#1111-博客标配四件套rss--标签--上一篇下一篇--草稿)。
 
 ### 11.7 元数据：YAML frontmatter（业界主流）
 
@@ -2130,6 +2129,130 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 本仓库走 **JS 插件链** —— 可组合性最好，生态最全。
 
 
+### 11.11 博客标配四件套：RSS / 标签 / 上一篇下一篇 / 草稿
+
+这一节把「能当博客底座」的最后四块拼图补齐。
+
+#### ① RSS 订阅源（`app/rss.xml/route.ts`）
+
+```tsx
+export async function GET() {
+  const posts = await getAllPostMeta();
+  const xml = `<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${SITE_NAME}</title>
+    <link>${absoluteUrl("/")}</link>
+    <description>${SITE_DESCRIPTION}</description>
+    <atom:link href="${absoluteUrl("/rss.xml")}" rel="self" type="application/rss+xml" />
+${items}
+  </channel>
+</rss>`;
+  return new Response(xml, {
+    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
+  });
+}
+```
+
+**四个必须注意的点**：
+
+| 点 | 说明 |
+|---|---|
+| `<link>` / `<guid>` 必须是**绝对 URL** | 订阅器要靠它去抓正文，相对路径无效 |
+| `<pubDate>` 必须是 **RFC 822** 格式 | `new Date().toUTCString()`，**不是** ISO 8601 |
+| XML 特殊字符必须转义 | `&` `<` `>` `"` `'` → `&amp;` `&lt;` … |
+| `<atom:link rel="self">` | 让订阅器知道 feed 自己的地址（用于校验） |
+
+用 Route Handler（而不是静态文件）的好处：**内容变了 feed 自动跟着变**，不用写构建脚本。
+
+站点常量抽到了 `lib/site.ts`（`SITE_URL` / `SITE_NAME` / `SITE_DESCRIPTION`），
+`sitemap.ts`、`robots.ts`、`rss.xml` 共用同一份，`SITE_URL` 支持 `NEXT_PUBLIC_SITE_URL` 环境变量覆盖。
+
+#### ② 标签页（`app/tags/`）
+
+```tsx
+// app/tags/[tag]/page.tsx
+export async function generateStaticParams() {
+  const tags = await getAllTags();
+  // ⚠️ 动态段的值必须是【字符串】—— 取 tag.name，不是整个对象
+  return tags.map((tag) => ({ tag: tag.name }));
+}
+```
+
+- 标签来自 frontmatter 的 `tags` 字段，`.md` 与 `.mdx` 都支持
+- **中文标签正常工作**：`/tags/性能` → URL 编码成 `/tags/%E6%80%A7%E8%83%BD`，
+  Next 自动解码 `params.tag`，拿到的仍是原始中文
+- `/tags` 索引页列出所有标签与文章数
+- 列表页顶部有标签导航，每篇文章下方有 `#标签` 徽标
+
+> ⚠️ `generateStaticParams` **可以是 async** —— 标签要读 frontmatter 才知道，
+> 直接 `await getAllTags()` 即可，不需要另写同步版本。
+
+#### ③ 上一篇 / 下一篇
+
+```ts
+// lib/posts.ts
+export async function getAdjacentPosts(slug: string) {
+  const posts = await getAllPostMeta();   // 按 date 倒序（新的在前）
+  const index = posts.findIndex((p) => p.slug === slug);
+  return {
+    prev: toAdjacent(posts[index - 1]),   // 更新的那篇 = 上一篇
+    next: toAdjacent(posts[index + 1]),   // 更旧的那篇 = 下一篇
+  };
+}
+```
+
+列表是**新 → 旧**，所以数组里**前**一个是「上一篇」、**后**一个是「下一篇」。
+第一篇没有「上一篇」，最后一篇没有「下一篇」（返回 `null`，渲染时留空）。
+
+#### ④ 草稿机制
+
+```md
+---
+title: "还在写：草稿示例"
+draft: true
+---
+
+# 这是一篇草稿
+```
+
+frontmatter 里写 `draft: true`，这篇文章会被**完全排除**：
+
+| 位置 | 效果 |
+|---|---|
+| 路由 | **不生成**（`prerender-manifest.json` 里没有它） |
+| 文章列表页 | 不出现 |
+| 标签页 | 不出现 |
+| RSS | 不出现 |
+
+实现方式：
+
+```ts
+export function isDraft(file: string): boolean {
+  const { data } = matter(fs.readFileSync(path.join(POSTS_DIR, file), "utf-8"));
+  return data.draft === true || data.draft === "true";
+}
+
+// 在扫描阶段就过滤掉
+export function getPostFiles(): PostFile[] {
+  return all
+    .map(/* ... */)
+    .filter((p) => !isDraft(p.file))   // ← 草稿直接剔除
+    .sort(/* ... */);
+}
+```
+
+> **为什么用 gray-matter 而不是 import 编译产物？**
+> `isDraft()` 需要在 `generateStaticParams`（同步、快）里跑，
+> import 每个 .mdx 会触发整个编译产物加载，慢得多。
+> gray-matter 直接读文件头部解析 YAML，代价几乎为零。
+
+**发布流程**：写的时候加 `draft: true` → 写完删掉这一行 → `pnpm build` → 自动发布。
+
+> ⚠️ 访问草稿的 URL 会命中 `/posts/[...slug]` 的动态 fallback，
+> 返回 `notFound()` 界面 —— 但**状态码是 200 而不是 404**，
+> 这正是 [§4.27](#427-实测坑点ppr-模式下-notfound-返回-200) 那个 PPR 坑点。
+
 ### 11.10 验证入口
 
 | 地址 | 看什么 |
@@ -2142,6 +2265,10 @@ const withMDX = createMDX({ experimental: { mdxRs: true } })
 | <http://localhost:3000/posts/tech/nested-post> | **分类目录下的文章**（多段路径） |
 | <http://localhost:3000/posts/life/reading-notes> | **纯 `.md` 文章**（YAML frontmatter） |
 | <http://localhost:3000/posts/gfm-test> | **GFM 插件链实测**：表格 / 删除线 / 任务列表 / 代码高亮 / 标题锚点 |
+| <http://localhost:3000/rss.xml> | **RSS 订阅源**（RSS 2.0，含标签 category） |
+| <http://localhost:3000/tags> | **标签索引页**（自动汇总所有标签） |
+| <http://localhost:3000/tags/Next.js> | 单标签页（中文标签如 `/tags/性能` 同样可用） |
+| <http://localhost:3000/posts/news/draft-wip> | **草稿** —— 不生成路由、不进列表/RSS/标签 |
 | <http://localhost:3000/posts/pure-markdown> | 顶层纯 `.md` 文章 |
 | <http://localhost:3000/mdx-page> | 仓库原有的单文件 MDX 页面（模式 A 的例子） |
 

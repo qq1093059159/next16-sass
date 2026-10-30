@@ -1,0 +1,17 @@
+---
+title: "还在写：草稿示例"
+date: "2026-11-05"
+draft: true
+tags: ["公告"]
+---
+
+# 这是一篇草稿
+
+frontmatter 里写了 `draft: true`，所以它：
+
+- **不会**生成路由（`/posts/news/draft-wip` 返回 404）
+- **不会**出现在文章列表页
+- **不会**进 RSS
+- **不会**进标签页
+
+等写好了，把 `draft: true` 删掉，重新 build 就会自动发布。

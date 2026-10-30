@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllPostMeta, getCategories } from "@/lib/posts";
+import { getAllPostMeta, getAllTags, getCategories } from "@/lib/posts";
 
 /**
  * 文章列表页 —— 自动扫描 content/ 目录生成。
@@ -17,6 +17,7 @@ import { getAllPostMeta, getCategories } from "@/lib/posts";
 export default async function PostsIndex() {
   const posts = await getAllPostMeta();
   const categories = getCategories();
+  const tags = await getAllTags();
 
   return (
     <div className="mx-auto max-w-2xl p-6">
@@ -26,19 +27,47 @@ export default async function PostsIndex() {
         目录下的 .md / .mdx 文件 —— 放进去即成文章。子目录自动成为<b>分类</b>。
       </p>
 
-      {categories.length > 0 ? (
-        <nav className="mt-6 flex flex-wrap gap-2">
-          {categories.map((c) => (
-            <Link
-              key={c.name}
-              href={`/category/${c.name}`}
-              className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-            >
-              {c.name} · {c.count}
-            </Link>
-          ))}
+      {/* 顶部工具条：分类 / 标签 / RSS */}
+      <div className="mt-6 flex flex-col gap-3">
+        {categories.length > 0 ? (
+          <nav className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wider opacity-50">分类</span>
+            {categories.map((c) => (
+              <Link
+                key={c.name}
+                href={`/category/${c.name}`}
+                className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                {c.name} · {c.count}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+
+        {tags.length > 0 ? (
+          <nav className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wider opacity-50">标签</span>
+            {tags.map((t) => (
+              <Link
+                key={t.name}
+                href={`/tags/${encodeURIComponent(t.name)}`}
+                className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                {t.name} · {t.count}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+
+        <nav className="flex flex-wrap items-center gap-3 text-xs">
+          <Link href="/tags" className="underline">
+            全部标签
+          </Link>
+          <Link href="/rss.xml" className="underline">
+            RSS 订阅
+          </Link>
         </nav>
-      ) : null}
+      </div>
 
       <ul className="mt-8 flex flex-col gap-4">
         {posts.map((post) => (
@@ -60,6 +89,18 @@ export default async function PostsIndex() {
               <h2 className="mt-1 text-lg font-semibold">{post.title}</h2>
               {post.excerpt ? (
                 <p className="mt-2 text-sm opacity-75">{post.excerpt}</p>
+              ) : null}
+              {post.tags && post.tags.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {post.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded bg-gray-100 px-2 py-0.5 text-[11px] opacity-70 dark:bg-gray-800"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
               ) : null}
             </Link>
           </li>

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import matter from "gray-matter";
 
 /**
  * 「目录即内容源」——递归扫描 content/ 下的文章。
@@ -12,10 +13,15 @@ import path from "node:path";
  * ⚠️ 这里用的是【递归扫描 + 动态 import】，不是 @next/mdx 的文件式路由。
  *    两者区别见 README 第十一章。
  *
- * ── 元数据的两条来源 ──────────────────────────────────────────
- * 1. `.mdx` 文件里的 `export const metadata = {...}`（Next 原生，最优雅）
- * 2. 同名的 `.json` 旁路文件（`intro.md` ↔ `intro.json`）—— **.md 文件必须用这个**，
- *    因为 `.md` 走纯 CommonMark 解析，**不启用 MDX 语法**，ESM 导出会被当正文渲染。
+ * ── 元数据的三条来源（优先级从低到高）────────────────────────────
+ * 1. YAML frontmatter（remark-mdx-frontmatter 转换而来）—— .md / .mdx 通用 ★推荐
+ * 2. 手写的 `export const metadata = {...}` —— 仅 .mdx（MDX 语法层能力）
+ * 3. 同名的 `.json` 旁路文件 —— 补充编译链读不到的字段
+ *
+ * ── 草稿机制 ────────────────────────────────────────────────────
+ * frontmatter 里写 `draft: true` 的文章会被**完全排除**：
+ *   不生成路由、不出现在列表页、不进 RSS、不进标签页。
+ *   检测用 gray-matter 直接读文件（同步、快，不需要 import 编译产物）。
  */
 
 const POSTS_DIR = path.join(process.cwd(), "content");
@@ -32,6 +38,8 @@ export type PostMeta = {
   date?: string;
   excerpt?: string;
   tags?: string[];
+  /** 草稿：true 时不生成路由、不出现在任何列表里 */
+  draft?: boolean;
 };
 
 /** 分类元数据（来自分类目录下的 _meta.json） */
@@ -39,6 +47,13 @@ export type CategoryMeta = {
   /** 展示名称，默认用目录名 */
   name?: string;
   description?: string;
+};
+
+/** 上一篇 / 下一篇的条目 */
+export type AdjacentPost = {
+  slug: string;
+  title: string;
+  category?: string;
 };
 
 /** 一篇文章的源文件 */
@@ -101,7 +116,25 @@ export function getPostFiles(): PostFile[] {
         baseSlug,
       };
     })
+    // 草稿直接剔除：路由、列表、RSS、标签页都看不到它
+    .filter((p) => !isDraft(p.file))
     .sort((a, b) => a.slug.localeCompare(b.slug));
+}
+
+/**
+ * 判断某篇文章是不是草稿。
+ *
+ * 用 gray-matter 同步读文件头部 —— 不用 import 编译产物，快得多。
+ * 只认 YAML frontmatter 里的 `draft: true`（字符串 "true" 也认）。
+ */
+export function isDraft(file: string): boolean {
+  try {
+    const full = path.join(POSTS_DIR, file);
+    const { data } = matter(fs.readFileSync(full, "utf-8"));
+    return data.draft === true || data.draft === "true";
+  } catch {
+    return false;
+  }
 }
 
 /** 只要 slug 列表 */
@@ -187,6 +220,60 @@ export function getCategories(): { name: string; count: number }[] {
   return [...map.entries()]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
+ * 列出所有标签及其文章数（按文章数倒序）。
+ *
+ * 标签来自 frontmatter 的 `tags` 字段，`.md` 与 `.mdx` 都支持。
+ */
+export async function getAllTags(): Promise<{ name: string; count: number }[]> {
+  const map = new Map<string, number>();
+  for (const post of await getAllPostMeta()) {
+    for (const tag of post.tags ?? []) {
+      map.set(tag, (map.get(tag) ?? 0) + 1);
+    }
+  }
+  return [...map.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/** 某篇文章所属的标签页（用于详情页展示标签） */
+export async function getPostTags(slug: string): Promise<string[]> {
+  const meta = await getPostMeta(slug);
+  return meta?.tags ?? [];
+}
+
+/**
+ * 上一篇 / 下一篇。
+ *
+ * 列表按 `date` 倒序（新的在前），所以：
+ *   - 「上一篇」= 更新的那篇 = 数组里【前】一个
+ *   - 「下一篇」= 更旧的那篇 = 数组里【后】一个
+ *
+ * 边界：第一篇没有上一篇，最后一篇没有下一篇（返回 null）。
+ */
+export async function getAdjacentPosts(
+  slug: string,
+): Promise<{ prev: AdjacentPost | null; next: AdjacentPost | null }> {
+  const posts = await getAllPostMeta();
+  const index = posts.findIndex((p) => p.slug === slug);
+  if (index === -1) return { prev: null, next: null };
+
+  const toAdjacent = (p: (typeof posts)[number] | undefined) =>
+    p
+      ? {
+          slug: p.slug,
+          title: p.title,
+          category: p.category,
+        }
+      : null;
+
+  return {
+    prev: toAdjacent(posts[index - 1]),
+    next: toAdjacent(posts[index + 1]),
+  };
 }
 
 /** 读分类的元数据（分类目录下的 _meta.json） */

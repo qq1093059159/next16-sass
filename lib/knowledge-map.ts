@@ -508,6 +508,30 @@ export const knowledgeMap: KnowledgeSection[] = [
         desc: "登记过的组件名可在 .mdx 里直接用（如 <Callout type=warn>），作者无需 import 任何东西。",
       },
       {
+        name: "RSS 订阅源",
+        href: "/rss.xml",
+        file: "app/rss.xml/route.ts · lib/site.ts",
+        desc: "Route Handler 产出 RSS 2.0，内容变了 feed 自动跟着变。三个坑：link/guid 必须是绝对 URL、pubDate 必须是 RFC 822 而非 ISO 8601、XML 特殊字符必须转义。",
+      },
+      {
+        name: "标签页",
+        href: "/tags",
+        file: "app/tags/page.tsx · app/tags/[tag]/page.tsx",
+        desc: "标签来自 frontmatter 的 tags 字段，自动生成 /tags/<tag> 页面。generateStaticParams 可以是 async；但动态段的值必须是字符串（传对象会报 required parameter was not provided as a string）。中文标签靠 encodeURIComponent + Next 自动解码。",
+      },
+      {
+        name: "上一篇 / 下一篇",
+        href: "/posts/news/second-post",
+        file: "lib/posts.ts · app/posts/[...slug]/page.tsx",
+        desc: "列表按 date 倒序（新的在前），所以数组前一个是「上一篇」、后一个是「下一篇」。第一篇无上一篇、最后一篇无下一篇。",
+      },
+      {
+        name: "草稿机制",
+        href: "/posts/news/draft-wip",
+        file: "lib/posts.ts · content/news/draft-wip.mdx",
+        desc: "frontmatter 写 draft: true 即被完全排除：不生成路由、不进列表/标签页/RSS。用 gray-matter 同步读文件判断（比 import 编译产物快得多），在扫描阶段就 filter 掉。",
+      },
+      {
         name: "remark / rehype 插件链",
         href: "/posts/gfm-test",
         file: "next.config.ts",
