@@ -135,18 +135,26 @@ export async function getPostMeta(slug: string): Promise<PostMeta | null> {
 
   let meta: Partial<PostMeta> = {};
 
-  // ① MDX 的 ESM export（只有 .mdx 有效）
+  // ① MDX 编译产物里的元数据
   try {
     // ⚠️ 这里必须用【含扩展名的完整相对路径】当 key：
     //    动态 import 表达式会被编译成「该目录下所有匹配扩展名的文件」的 context map，
     //    key 是完整路径。写死 .mdx 就找不到 .md 文件了。
     const mod = await import(`@/content/${entry.file}`);
-    meta = (mod.metadata ?? {}) as Partial<PostMeta>;
+
+    // 两条来源，frontmatter 优先：
+    //   mod.frontmatter —— YAML frontmatter（remark-mdx-frontmatter 转换而来）
+    //                     ★ .md 与 .mdx 都有效，这是最通用的写法
+    //   mod.metadata    —— 手写的 export const metadata（Next 原生识别，自动进 <head>）
+    meta = {
+      ...((mod.frontmatter ?? {}) as Partial<PostMeta>),
+      ...((mod.metadata ?? {}) as Partial<PostMeta>),
+    };
   } catch {
-    // .md 文件走到这里很正常 —— 它没有 ESM export
+    // 编译产物异常时不应让整个列表页挂掉，退化成「只有 slug」
   }
 
-  // ② .json 旁路（优先级更高）
+  // ② .json 旁路（优先级最高，适合放编译链读不到的字段）
   if (entry.jsonFile) {
     meta = { ...meta, ...readJsonMeta(entry.jsonFile) };
   }

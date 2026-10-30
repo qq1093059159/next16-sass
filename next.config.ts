@@ -1,8 +1,46 @@
 import type { NextConfig } from "next";
 import createMDX from '@next/mdx'
+
+/**
+ * MDX 编译选项 —— 走 @mdx-js/loader 的 JS 插件链。
+ *
+ * ⚠️ Turbopack 的硬性限制：loader options 必须【可序列化】，
+ *    所以插件必须用【字符串包名】引用，不能传 import 进来的函数
+ *    （函数无法序列化，会报 "does not have serializable options"）。
+ *    插件的【选项】必须是纯 JSON 数据，不能含回调函数。
+ *
+ *    这也是 Next 官方文档对 Turbopack 的明确要求。
+ */
 const withMDX = createMDX({
     extension: /\.(md|mdx)$/,
+    options: {
+        remarkPlugins: [
+            // ① 先剥离 YAML frontmatter（否则 --- 会被当 thematic break 渲染出来）
+            'remark-frontmatter',
+            // ② 把 frontmatter 转成 ESM 导出：export const frontmatter = {...}
+            //
+            //    ⚠️ name 不能填 'metadata' —— 这个插件会【无条件】注入一个导出，
+            //       即使文件里没有 frontmatter 也会生成 `export const metadata = {}`，
+            //       于是和手写的 export const metadata 撞名，
+            //       编译期报 "Variable name conflict: metadata"。
+            //       用 'frontmatter' 这个名字就没有冲突，
+            //       合并优先级由 lib/posts.ts 控制（frontmatter 优先）。
+            ['remark-mdx-frontmatter', { name: 'frontmatter' }],
+            // ③ GitHub Flavored Markdown：表格、删除线、任务列表、自动链接、脚注
+            'remark-gfm',
+        ],
+        rehypePlugins: [
+            // ④ 给标题自动加 id（用于锚点目录 / 锚点跳转）
+            'rehype-slug',
+            // ⑤ 代码高亮（Shiki，编译期完成，零运行时开销）
+            ['rehype-pretty-code', {
+                theme: { dark: 'github-dark', light: 'github-light' },
+                defaultLang: 'plaintext',
+            }],
+        ],
+    },
 });
+
 const nextConfig: NextConfig = {
   /* config options here */
   // 开启reactCompiler

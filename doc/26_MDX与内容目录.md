@@ -293,32 +293,61 @@ Error: Cannot find module '@/content/tech\nested-post.mdx'
 
 ---
 
-## 五、元数据：用 `export const metadata` 而不是 YAML frontmatter
+## 五、元数据：三种写法
 
-`.mdx` 文件里可以写 ESM 导出，Next 会当成标准的 `metadata` 处理并自动写进 `<head>`：
+| 写法 | 生效范围 | 说明 |
+|---|---|---|
+| YAML frontmatter | `.md` ✅ `.mdx` ✅ | **推荐**。`---` 包裹，由 remark 插件链处理（见 §5.1） |
+| `export const metadata = {...}` | 仅 `.mdx` ✅ | MDX 语法层能力，Next 原生识别，自动进 `<head>` |
+| 同名 `.json` 旁路 | `.md` ✅ `.mdx` ✅ | 可选补充机制，适合放编译链读不到的字段 |
 
-```mdx
-export const metadata = {
-  title: "第一篇文章：用 MDX 写博客",
-  date: "2026-10-30",
-  excerpt: "把写好的 .mdx 文件丢进 content/ 目录，它就变成了一篇文章。",
-};
+> ⚠️ **本节结论已修正。** 最初写的是「`.md` 不支持元数据，必须用 `.json` 旁路」——
+> 那是在**还没配 remark 插件链**时的实测结论。配了插件链之后，
+> **`.md` 和 `.mdx` 都能用 YAML frontmatter**，这才是业界主流做法。
 
-# 你好，MDX
+### 5.1 YAML frontmatter（推荐写法）
 
-这是一篇放在 `content/` 目录下的文章。**它同时支持 Markdown 和 JSX**。
+```markdown
+---
+title: "第一篇文章：用 MDX 写博客"
+date: "2026-10-30"
+excerpt: "把写好的文件丢进 content/ 目录，它就变成了一篇文章。"
+tags: ["Next.js", "MDX"]
+---
+
+# 正文从这里开始
 ```
 
-三种写法的取舍：
+**为什么 frontmatter 对 `.md` 也生效？** 因为它属于 **remark 插件层** ——
+在 Markdown → AST 之前就把文件头部的 `---` 区块剥掉了，与文件是 `.md` 还是 `.mdx` 无关。
 
-| 写法 | 支持情况 | 备注 |
-|---|---|---|
-| `export const metadata = {...}` | ✅ 仅 `.mdx` | Next 标准 metadata，自动进 `<head>`，类型安全 |
-| YAML frontmatter（`---` 包裹） | ❌ 默认不支持 | 要自己加 remark 插件（如 `remark-frontmatter`） |
-| 同名 `.json` 旁路 | ✅ `.md` 与 `.mdx` 通用 | 见 §5.2 |
+| 层次 | 能力 | `.md` | `.mdx` |
+|---|---|---|---|
+| **MDX 语法层** | JSX、ESM 导出 | ❌ | ✅ |
+| **remark 插件层** | YAML frontmatter、GFM 表格 | ✅ | ✅ |
 
-> 补充：`generateMetadata` 也能在 MDX 里用 —— 它和 `metadata` 一样是 ESM 导出，
-> Next 会把它当成动态 metadata 的来源。
+插件配置见 [§9 插件链](#九插件链让-markdown-真正像文档)。
+
+### 5.2 三种来源的合并优先级
+
+`lib/posts.ts` 的 `getPostMeta()` 负责合并：
+
+```ts
+meta = {
+  ...((mod.frontmatter ?? {}) as Partial<PostMeta>),   // ① YAML frontmatter
+  ...((mod.metadata ?? {}) as Partial<PostMeta>),      // ② 手写 export const metadata
+};
+// ③ .json 旁路再覆盖一层
+if (entry.jsonFile) {
+  meta = { ...meta, ...readJsonMeta(entry.jsonFile) };
+}
+```
+
+优先级：**frontmatter → 手写 metadata → .json 旁路**。
+
+> ⚠️ **详情页一定要走 `getPostMeta()`**，不要直接用 `import()` 出来的 `metadata` ——
+> 后者拿不到 frontmatter（frontmatter 被编译成 `export const frontmatter`，
+> 不是 `metadata`）。这是本轮实测修掉的一个 bug。
 
 ### 5.2 ⚠️ `.md` 文件不支持 `export const metadata` —— 必须用 `.json` 旁路
 
@@ -650,7 +679,58 @@ pnpm build && pnpm start
 **预期**：构建**通过**（不报错！），但页面上会**原样显示这行代码**，
 标题仍是文件名。**把这一行删掉**，改用 `content/pure-markdown.json`。
 
-### 实验 9：验证 PPR 的 404 状态码坑点（第二次出现）
+### 实验 9：体验插件链
+
+在 `content/gfm-test.md` 里写一张表格：
+
+```markdown
+| 特性 | 库 | 状态 |
+|---|---|---|
+| 表格 | remark-gfm | ✅ |
+```
+
+```bash
+pnpm build && pnpm start
+```
+
+打开 <http://localhost:3000/posts/gfm-test>。
+
+**预期**：表格渲染成真正的 `<table>`（源码里能看到 `<table>` 标签）。
+
+**然后**：把 `next.config.ts` 里的 `'remark-gfm'` 删掉，重新 build。
+
+**预期**：表格消失，变成一堆竖线文本 —— 这就是没有 remark-gfm 的样子。
+
+### 实验 10：亲手触发 Turbopack 的序列化限制
+
+把 `next.config.ts` 里的
+
+```ts
+'remark-gfm',
+```
+
+改成
+
+```ts
+remarkGfm,          // ← 传函数
+```
+
+并加上 `import remarkGfm from 'remark-gfm'`。
+
+```bash
+pnpm build
+```
+
+**预期**：构建失败，报
+
+```text
+Error: loader .../mdx-js-loader.js for match "{*,next-mdx-rule}" does not have
+serializable options.
+```
+
+**改回字符串**。
+
+### 实验 11：验证 PPR 的 404 状态码坑点（第二次出现）
 
 ```bash
 curl -I http://127.0.0.1:3000/posts/not-exist
@@ -661,7 +741,127 @@ curl -I http://127.0.0.1:3000/posts/not-exist
 
 ---
 
-## 九、常见错误
+## 九、插件链：让 Markdown 真正「像文档」
+
+光能解析 Markdown 不够 —— 技术文档需要**表格、代码高亮、标题锚点、目录**。
+这些全部由 **remark / rehype 插件链**（`unified` 生态）提供。
+
+### 9.1 本仓库的完整配置
+
+```ts
+import createMDX from '@next/mdx'
+
+const withMDX = createMDX({
+    extension: /\.(md|mdx)$/,
+    options: {
+        remarkPlugins: [
+            'remark-frontmatter',
+            ['remark-mdx-frontmatter', { name: 'frontmatter' }],
+            'remark-gfm',
+        ],
+        rehypePlugins: [
+            'rehype-slug',
+            ['rehype-pretty-code', {
+                theme: { dark: 'github-dark', light: 'github-light' },
+                defaultLang: 'plaintext',
+            }],
+        ],
+    },
+})
+```
+
+### 9.2 remark vs rehype 的分工
+
+| | 处理什么 | 典型插件 |
+|---|---|---|
+| `remarkPlugins` | Markdown AST（还没变成 HTML） | `remark-gfm`、`remark-frontmatter`、`remark-math`、`remark-toc` |
+| `rehypePlugins` | HTML AST（已经是 HTML 树） | `rehype-slug`、`rehype-pretty-code`、`rehype-katex`、`rehype-autolink-headings` |
+
+### 9.3 技术文档站最常用的插件
+
+| 插件 | 解决什么 |
+|---|---|
+| `remark-gfm` | 表格、删除线、任务列表、自动链接、脚注 —— **几乎必备** |
+| `remark-frontmatter` + `remark-mdx-frontmatter` | YAML frontmatter |
+| `rehype-slug` | 标题自动 `id`，用于锚点目录 / 锚点跳转 |
+| `rehype-pretty-code`（Shiki） | 代码高亮，**编译期完成**，零运行时开销 |
+| `rehype-autolink-headings` | 标题旁出现 `#` 锚点链接 |
+| `remark-math` + `rehype-katex` | LaTeX 公式 |
+| `reading-time` | 阅读时长估算（普通 JS 包，不是插件） |
+
+### 9.4 ⚠️ Turbopack 的硬性限制：插件必须用字符串名
+
+Next 16 默认用 Turbopack，它要求 loader 的 options **必须可序列化**。
+插件是**函数** → 不可序列化 → 构建直接失败：
+
+```text
+Error: loader .../mdx-js-loader.js for match "{*,next-mdx-rule}" does not have
+serializable options. Ensure that options passed are plain JavaScript objects and values.
+```
+
+**不能这样写**：
+
+```ts
+// ❌ 传函数 —— Turbopack 下直接构建失败
+import remarkGfm from 'remark-gfm'
+createMDX({ options: { remarkPlugins: [remarkGfm] } })
+```
+
+**必须用字符串包名**，选项保持纯 JSON：
+
+```ts
+// ✅
+createMDX({
+  options: {
+    remarkPlugins: ['remark-gfm', ['remark-toc', { heading: '目录' }]],
+    rehypePlugins: ['rehype-slug', ['rehype-katex', { strict: true }]],
+  },
+})
+```
+
+> 插件的**选项**也不能含回调函数（如 `{ transform(node) {...} }`）——
+> 那种插件只能走 Webpack，或找 Rust（MDX-RS）兼容版本。
+
+### 9.5 ⚠️ `remark-mdx-frontmatter` 的 name 不能填 `metadata`
+
+看起来把 `name` 设成 `metadata` 很美（frontmatter 直接变成 Next 标准 metadata），
+但这个插件会**无条件**注入一个导出 —— 即使文件里根本没有 frontmatter，
+也会生成 `export const metadata = {}`，于是和手写的 `export const metadata` **撞名**：
+
+```text
+Variable name conflict: metadata
+```
+
+**正确做法**：`name: 'frontmatter'`，把合并优先级交给 JS 层控制（见 §5.2）。
+
+### 9.6 另一条路：Rust 编译器（`experimental.mdxRs`）
+
+```ts
+const withMDX = createMDX({ experimental: { mdxRs: true } })
+```
+
+| | JS 插件链（`options`） | Rust 编译器（`mdxRs`） |
+|---|---|---|
+| 插件生态 | unified 全生态（几百个） | 只有 Rust 实现的插件 |
+| 编译速度 | 较慢 | 很快 |
+| 稳定性 | 稳定 | **官方标注实验性，不建议上生产** |
+| 配置 | 字符串插件名 | `mdxType: 'gfm'` 等字段 |
+
+本仓库走 **JS 插件链** —— 可组合性最好，生态最全。
+
+### 9.7 效果验收
+
+打开 <http://localhost:3000/posts/gfm-test>，应当看到：
+
+- 表格渲染成真正的 `<table>`
+- `~~删除线~~` 渲染成 `<del>`
+- `- [x]` 渲染成 `task-list-item`
+- 代码块有 Shiki 的 token 着色（`<span data-line>` + `--shiki-*` CSS 变量）
+- 每个标题都有自动生成的 `id`（`这个三级标题应该有-id`）
+
+---
+
+## 十、常见错误
 
 | 错误 | 后果 | 正确做法 |
 |---|---|---|
@@ -675,11 +875,14 @@ curl -I http://127.0.0.1:3000/posts/not-exist
 | 分类目录里的文章不出现 | 扫描没递归 | `readdirSync(dir, { recursive: true })` |
 | 分类文章 404 | 用了 `[slug]` | 换 `[...slug]`（catch-all），params.slug 改成 `string[]` |
 | Windows 上构建报 `Cannot find module` | 路径是反斜杠 | `.split(path.sep).join("/")` |
-| `.md` 文章标题显示成文件名 | `.md` 不支持 ESM export | 改用同名 `.json` 旁路 |
+| `.md` 文章标题显示成文件名 | 没配 remark 插件链，frontmatter 不生效 | 配 `remark-frontmatter` + `remark-mdx-frontmatter` |
+| 表格没渲染成表格 | 缺 `remark-gfm` | 加 `'remark-gfm'` 到 remarkPlugins |
+| 构建报 `does not have serializable options` | Turbopack 下传了插件函数 | 改用字符串包名 |
+| 构建报 `Variable name conflict: metadata` | `remark-mdx-frontmatter` 的 name 填了 `metadata` | 改成 `frontmatter`，合并交给 JS 层 |
 
 ---
 
-## 十、自检
+## 十一、自检
 
 1. `@next/mdx` 到底做了什么？它**不**做哪三件事？
 2. 动态 import 的 key 为什么必须是完整文件名？
@@ -693,17 +896,25 @@ curl -I http://127.0.0.1:3000/posts/not-exist
 10. 为什么 `[slug]` 接不住 `content/tech/post.mdx`？
 11. `.md` 文件的元数据该怎么给？为什么不能写在 `.md` 里？
 12. Windows 上构建报 `Cannot find module` 是什么原因？
+13. remark 和 rehype 分别处理什么阶段的 AST？
+14. 为什么 Turbopack 下插件必须用字符串名？
+15. `remark-mdx-frontmatter` 的 name 为什么不能填 `metadata`？
+16. 为什么 YAML frontmatter 对 `.md` 也生效？
 
 ---
 
-## 十一、小结 & 下一步
+## 十二、小结 & 下一步
 
 - `@next/mdx` 是**编译期 loader**，遵循「一个文件 = 一个路由」，**不做目录扫描**。
 - 「目录即内容源」要自己补四件事：递归扫描 + 动态 import + 列表页 + 分类页。
 - 动态 import 的四个要点：**完整文件名**、**`@/` 别名**、**构建期扫描**、**正斜杠**。
 - 分类**零配置**：`content/<分类名>/` 就是分类，`_meta.json` 可加名称与描述。
-- 元数据有两条来源：`.mdx` 用 `export const metadata`；`.md` 用同名 `.json` 旁路。
+- 元数据三条来源（优先级 frontmatter → 手写 metadata → `.json` 旁路），
+  **YAML frontmatter 是主流写法**，`.md` / `.mdx` 通用。
 - 组件定制走 `mdx-components.tsx`；正文排版记得 `@plugin "@tailwindcss/typography"`。
+- **插件链**才是「像技术文档」的关键：remark-gfm（表格）+ rehype-slug（锚点）+
+  rehype-pretty-code（Shiki 高亮），三者缺一不可。
+- Turbopack 的硬限制：插件用**字符串包名**，选项用纯 JSON —— 这是 Next 官方文档的要求。
 - 又一次撞见 PPR 的 404 状态码坑 —— **同一个坑在不同页面复现，说明它是框架级行为**。
 
 **下一步** → 回到 [第 25 课 · 实测踩坑与学习路线](25_实测踩坑与学习路线.md) 做总复习，

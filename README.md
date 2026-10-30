@@ -1804,25 +1804,15 @@ await import(`@/content/${entry.file}`)        // ✅ 稳定
 
 本仓库保持**纯静态**（博客最常见的形态）。
 
-### 11.4 元数据：为什么用 `export const metadata` 而不是 YAML frontmatter
+### 11.4 元数据的三种写法（速查）
 
-`.mdx` 文件里可以写 ESM 导出，Next 会当成标准的 `metadata` 处理并自动写进 `<head>`：
+| 写法 | 生效范围 | 说明 |
+|---|---|---|
+| YAML frontmatter | `.md` ✅ `.mdx` ✅ | **推荐**。`---` 包裹，由 remark 插件链处理，详见 [11.7](#117-元数据yaml-frontmatter业界主流) |
+| `export const metadata = {...}` | 仅 `.mdx` ✅ | MDX 语法层能力，Next 原生识别，自动进 `<head>` |
+| 同名 `.json` 旁路 | `.md` ✅ `.mdx` ✅ | 可选补充机制，适合放编译链读不到的字段 |
 
-```mdx
-export const metadata = {
-  title: "第一篇文章：用 MDX 写博客",
-  date: "2026-10-30",
-  excerpt: "把写好的 .mdx 文件丢进 content/ 目录，它就变成了一篇文章。",
-};
-
-# 你好，MDX
-
-正文……
-```
-
-> `@next/mdx` **不解析 YAML frontmatter**（`---` 包裹的那种）。
-> 要用 YAML 得自己加 remark 插件。本仓库选择用 MDX 原生的 ESM 导出：
-> 类型安全、自动进 `<head>`、零额外依赖。
+三者可以共存，合并优先级：`frontmatter` → 手写 `metadata` → `.json` 旁路。
 
 ### 11.5 MDX 组件定制（`mdx-components.tsx`）
 
@@ -1851,7 +1841,7 @@ export function useMDXComponents(): MDXComponents {
 </Callout>
 ```
 
-### 11.7 分类目录：子目录自动成为分类
+### 11.6 分类目录：子目录自动成为分类
 
 **放进去即成文章，分类也是零配置的** —— 建一个文件夹就是一个新分类：
 
@@ -1909,70 +1899,52 @@ export function generateStaticParams() {
 
 > 下划线开头的文件会被扫描器跳过（不当成文章），专供元数据使用。
 
-### 11.8 ⚠️ `.md` 文件不支持 `export const metadata` —— 用 `.json` 旁路
+### 11.7 元数据：YAML frontmatter（业界主流）
 
-**实测结论**（这是本节最重要的坑）：
+> ⚠️ **本节结论已修正。** 上一版写的是「`.md` 不支持元数据，必须用 `.json` 旁路」——
+> 那是在**还没配 remark 插件链**时的实测结论。配置插件链后（见 §11.10），
+> **`.md` 和 `.mdx` 都能用 YAML frontmatter**，这才是业界主流做法。
 
-| 文件类型 | 走什么解析 | JSX | `export const metadata` |
+**先分清两个层次**：
+
+| 层次 | 能力 | `.md` | `.mdx` |
 |---|---|---|---|
-| `.mdx` | 完整 MDX | ✅ | ✅ 生效 |
-| `.md` | **纯 CommonMark** | ❌ 当成普通文本 | ❌ **被当正文渲染出来** |
+| **MDX 语法层** | JSX、ESM 导出（`export const metadata`） | ❌ | ✅ |
+| **remark 插件层** | YAML frontmatter、GFM 表格、删除线、任务列表 | ✅ | ✅ |
 
-实测现象：在 `.md` 文件里写
+frontmatter 属于**remark 插件层** —— 它在 Markdown → AST 之前就把文件头部的
+`---` 区块剥掉了，所以**与文件是 `.md` 还是 `.mdx` 无关**。
 
-```md
-export const metadata = { title: "读书笔记" };
+**推荐写法（`.md` / `.mdx` 通用）**：
+
+```markdown
+---
+title: "第一篇文章：用 MDX 写博客"
+date: "2026-10-30"
+excerpt: "把写好的文件丢进 content/ 目录，它就变成了一篇文章。"
+tags: ["Next.js", "MDX"]
+---
+
+# 正文从这里开始
 ```
 
-页面上会**原样显示这行代码**，标题则退化成文件名。
-
-> 原因：Next 对 `.md` 与 `.mdx` 用**不同的 loader 配置**（`format: 'md'` vs `'mdx'`），
-> `.md` 不启用 MDX 语法。`@next/mdx` 的 `extension` 只控制「哪些文件走 loader」，
-> 改不了「用哪种语法解析」。
-
-**解法：同名 `.json` 旁路文件**。
-
-```text
-content/life/reading-notes.md      ← 正文（纯 Markdown）
-content/life/reading-notes.json    ← 元数据
-```
-
-```json
-{
-  "title": "读书笔记：把复杂留给自己",
-  "date": "2026-10-20",
-  "excerpt": "一篇纯 Markdown 的文章，放在 life 分类里。",
-  "tags": ["读书", "随笔"]
-}
-```
-
-`lib/posts.ts` 里做合并（**旁路优先**）：
+`remark-mdx-frontmatter` 会把它编译成 `export const frontmatter = {...}`，
+再由 `lib/posts.ts` 的 `getPostMeta()` 读出来：
 
 ```ts
-export async function getPostMeta(slug: string): Promise<PostMeta | null> {
-  const entry = getPostFiles().find((p) => p.slug === slug);
-  if (!entry) return null;
-
-  let meta: Partial<PostMeta> = {};
-  try {
-    const mod = await import(`@/content/${entry.file}`);
-    meta = (mod.metadata ?? {}) as Partial<PostMeta>;   // .mdx 的 ESM export
-  } catch {
-    // .md 文件走到这里很正常 —— 它没有 ESM export
-  }
-
-  if (entry.jsonFile) {
-    meta = { ...meta, ...readJsonMeta(entry.jsonFile) }; // .json 旁路优先
-  }
-
-  return { title: entry.baseSlug, ...meta };
-}
+meta = {
+  ...((mod.frontmatter ?? {}) as Partial<PostMeta>),   // YAML frontmatter
+  ...((mod.metadata ?? {}) as Partial<PostMeta>),      // 手写 export const metadata
+};
 ```
 
-> ⚠️ **详情页一定要走 `getPostMeta()`**，不要直接用 `import()` 出来的 `metadata` ——
-> 后者拿不到 `.json` 旁路（这是本轮实测修掉的一个 bug）。
+**两条来源可以共存**，合并优先级：`frontmatter` → 手写 `metadata` → `.json` 旁路。
 
-### 11.9 本轮实测到的第三个坑：Windows 路径分隔符
+> `.json` 旁路（`reading-notes.md` ↔ `reading-notes.json`）保留为**可选补充机制**，
+> 适合放编译链读不到的字段。本仓库用它演示「多来源合并」：
+> `reading-notes.json` 只放 `tags` 与 `author`，其余仍来自 frontmatter。
+
+### 11.8 实测坑：Windows 路径分隔符
 
 ```ts
 fs.readdirSync(dir, { recursive: true })
@@ -1995,7 +1967,116 @@ Error: Cannot find module '@/content/tech\nested-post.mdx'
 > 这是个典型的「Windows 上开发、Linux 上构建」才暴露的坑 ——
 > 跨平台项目里 `path.sep` 一定要处理。
 
-### 11.6 验证入口
+### 11.9 业界标准插件链：让 Markdown 真正「像文档」★
+
+光能解析 Markdown 不够 —— 技术文档需要**表格、代码高亮、标题锚点、目录**。
+这些全部由 **remark / rehype 插件链**提供（`unified` 生态）。
+
+本仓库 `next.config.ts` 的完整配置：
+
+```ts
+import createMDX from '@next/mdx'
+
+const withMDX = createMDX({
+    extension: /\.(md|mdx)$/,
+    options: {
+        remarkPlugins: [
+            'remark-frontmatter',                          // 剥离 YAML frontmatter
+            ['remark-mdx-frontmatter', { name: 'frontmatter' }],  // → ESM 导出
+            'remark-gfm',                                  // 表格/删除线/任务列表/自动链接
+        ],
+        rehypePlugins: [
+            'rehype-slug',                                 // 标题自动加 id
+            ['rehype-pretty-code', {                       // Shiki 代码高亮（编译期）
+                theme: { dark: 'github-dark', light: 'github-light' },
+                defaultLang: 'plaintext',
+            }],
+        ],
+    },
+})
+```
+
+**remark vs rehype 的分工**：
+
+| | 处理什么 | 典型插件 |
+|---|---|---|
+| `remarkPlugins` | Markdown AST（还没变成 HTML） | `remark-gfm`、`remark-frontmatter`、`remark-math`、`remark-toc` |
+| `rehypePlugins` | HTML AST（已经是 HTML 树） | `rehype-slug`、`rehype-pretty-code`、`rehype-katex`、`rehype-autolink-headings` |
+
+**装哪些最常用**（技术文档站刚需）：
+
+| 插件 | 解决什么 |
+|---|---|
+| `remark-gfm` | 表格、删除线、任务列表、自动链接、脚注 —— **几乎必备** |
+| `remark-frontmatter` + `remark-mdx-frontmatter` | YAML frontmatter |
+| `rehype-slug` | 标题自动 `id`，用于锚点目录 / 锚点跳转 |
+| `rehype-pretty-code`（Shiki） | 代码高亮，**编译期完成**，零运行时开销 |
+| `rehype-autolink-headings` | 标题旁出现 `#` 锚点链接 |
+| `remark-math` + `rehype-katex` | LaTeX 公式 |
+| `reading-time` | 阅读时长估算（普通 JS 包，不是插件） |
+
+### ⚠️ Turbopack 的硬性限制：插件必须用字符串名
+
+Next 16 默认用 Turbopack，它要求 loader 的 options **必须可序列化**。
+插件是**函数** → 不可序列化 → 构建直接失败：
+
+```text
+Error: loader .../mdx-js-loader.js for match "{*,next-mdx-rule}" does not have
+serializable options. Ensure that options passed are plain JavaScript objects and values.
+```
+
+**所以不能这样写**（官方文档明确要求用字符串）：
+
+```ts
+// ❌ 传函数 —— Turbopack 下直接构建失败
+import remarkGfm from 'remark-gfm'
+createMDX({ options: { remarkPlugins: [remarkGfm] } })
+```
+
+```ts
+// ✅ 用【字符串包名】，选项保持纯 JSON
+createMDX({
+  options: {
+    remarkPlugins: ['remark-gfm', ['remark-toc', { heading: '目录' }]],
+    rehypePlugins: ['rehype-slug', ['rehype-katex', { strict: true }]],
+  },
+})
+```
+
+> 插件的**选项**也不能含回调函数（如 `{ transform(node) {...} }`）——
+> 那种插件只能走 Webpack，或找 Rust（MDX-RS）兼容版本。
+
+### ⚠️ 另一个坑：`remark-mdx-frontmatter` 的 name 不能填 `metadata`
+
+看起来把 `name` 设成 `metadata` 很美（frontmatter 直接变成 Next 标准 metadata），
+但这个插件会**无条件**注入一个导出 —— 即使文件里根本没有 frontmatter，
+也会生成 `export const metadata = {}`，于是和手写的 `export const metadata` **撞名**：
+
+```text
+Variable name conflict: metadata
+```
+
+**正确做法**：`name: 'frontmatter'`，把合并优先级交给 JS 层控制（见 §11.8）。
+
+### 另一条路：Rust 编译器（`experimental.mdxRs`）
+
+Next 16 还有一套 Rust 实现的 MDX 编译器：
+
+```ts
+const withMDX = createMDX({ experimental: { mdxRs: true } })
+```
+
+| | JS 插件链（`options`） | Rust 编译器（`mdxRs`） |
+|---|---|---|
+| 插件生态 | unified 全生态（几百个） | 只有 Rust 实现的插件 |
+| 编译速度 | 较慢 | 很快 |
+| 稳定性 | 稳定 | **官方标注实验性，不建议上生产** |
+| 配置 | 字符串插件名 | `mdxType: 'gfm'` 等字段 |
+
+本仓库走 **JS 插件链** —— 可组合性最好，生态最全。
+
+
+### 11.10 验证入口
 
 | 地址 | 看什么 |
 |---|---|
@@ -2003,7 +2084,8 @@ Error: Cannot find module '@/content/tech\nested-post.mdx'
 | <http://localhost:3000/category/tech> | 分类页 —— 列出 `content/tech/` 下的文章 |
 | <http://localhost:3000/posts/hello> | `.mdx` 文章（支持 JSX、自定义组件） |
 | <http://localhost:3000/posts/tech/nested-post> | **分类目录下的文章**（多段路径） |
-| <http://localhost:3000/posts/life/reading-notes> | **纯 `.md` 文章**（元数据走 `.json` 旁路） |
+| <http://localhost:3000/posts/life/reading-notes> | **纯 `.md` 文章**（YAML frontmatter） |
+| <http://localhost:3000/posts/gfm-test> | **GFM 插件链实测**：表格 / 删除线 / 任务列表 / 代码高亮 / 标题锚点 |
 | <http://localhost:3000/posts/pure-markdown> | 顶层纯 `.md` 文章 |
 | <http://localhost:3000/mdx-page> | 仓库原有的单文件 MDX 页面（模式 A 的例子） |
 

@@ -1,8 +1,8 @@
-export const metadata = {
-  title: "纯 Markdown 也能用",
-  date: "2026-10-29",
-  excerpt: "同一个 content/ 目录里，.md 和 .mdx 可以混放。",
-};
+---
+title: "纯 Markdown 也能用"
+date: "2026-10-29"
+excerpt: "同一个 content/ 目录里，.md 和 .mdx 可以混放。"
+---
 
 # 纯 Markdown 文章
 

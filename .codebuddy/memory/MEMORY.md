@@ -50,3 +50,32 @@
 - README 结构（2026-10-26 重构后）：速览(30秒) → 目录导航 → 一~九章，第四章「核心知识点详解」27 个小节是主体。
 - **写 Markdown 标题不要用 emoji**：`⚠️` 的 U+FE0F 会进入 GitHub 锚点，极脆。§4.27 已清理。
 - **锚点校验必须用官方 github-slugger**，不要自制简化算法：`npm pack github-slugger@2` 取 `slug()` 复算；GitHub 规则是连续空格**逐个**转连字符、CJK 标点删除、下划线保留、重复标题追加 `-1`。
+
+## MDX / 内容目录（2026-10-30 建立，本仓库已跑通）
+- `next.config.ts` **已启用** `createMDX({ extension: /\.(md|mdx)$/ })` + `pageExtensions` 含 md/mdx。
+  关掉开关构建会报 `To use "use cache"…` 类错误（因 `app/(root)/ssg/[id]` 用了 `"use cache"`）。
+- **Turbopack 硬限制**：`@next/mdx` 的 `options` 必须**可序列化** → 插件**只能用字符串包名**
+  （`'remark-gfm'`），传 import 进来的函数会报
+  `does not have serializable options`。插件**选项**也不能含回调函数。这是 Next 官方文档要求。
+- **`remark-mdx-frontmatter` 的 `name` 不能填 `metadata`** —— 该插件无条件注入导出，
+  没有 frontmatter 的文件也会生成 `export const metadata = {}`，
+  与手写同名导出撞名报 `Variable name conflict: metadata`。用 `name: 'frontmatter'` 再由 JS 层合并。
+- **元数据三条来源**（优先级）：YAML frontmatter → 手写 `export const metadata` → 同名 `.json` 旁路。
+  **frontmatter 是主流写法**，`.md` 与 `.mdx` 通用 —— 因为 frontmatter 属 remark 插件层，
+  与 MDX 语法层无关。`.md` 只**不支持 JSX 与手写 ESM 导出**。
+  ⚠️ 2026-10-30 早先的结论「`.md` 必须用 `.json` 旁路」**已被插件链实测推翻并修正**。
+- 详情页必须走 `lib/posts.ts` 的 `getPostMeta()` 合并，**不能**直接用 `import()` 出来的 `metadata`
+  （frontmatter 被编译成 `export const frontmatter`，不是 `metadata`）。
+- 分类目录：`content/<分类>/` 自动成为分类（零配置），路由必须用 `[...slug]`（catch-all，
+  `params.slug` 是 `string[]`），分类页在 `app/category/[category]/`。
+- `fs.readdirSync(dir, { recursive: true })` 在 **Windows 返回反斜杠路径**，
+  必须 `.split(path.sep).join("/")`，否则 import key 对不上 context map → `Cannot find module`。
+- 本仓库已装插件链：`remark-gfm` `remark-frontmatter` `remark-mdx-frontmatter`
+  `rehype-slug` `rehype-pretty-code` `shiki` `gray-matter`。
+
+## MDX 生态现状（2026-10-30 核实，npm 实测）
+- `contentlayer` **已死**（最后发布 2023-07-31）→ 用 `velite`（0.4.0，2026-06 活跃）替代。
+- `next-mdx-remote`（6.0.0，2026-02 后停更，HashiCorp archive）→ 用 `next-mdx-remote-client`
+  （2.1.12，2026-08 活跃，本仓库已装）。
+- `fumadocs-core` 16.17.9 / `nextra` 4.6.1 —— 文档站框架，版本号跟 Next 对齐（活跃）。
+- `@next/mdx` npm 最新 16.4.3（本仓库装 ^16.1.3，可升）。
