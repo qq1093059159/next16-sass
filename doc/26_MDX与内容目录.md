@@ -52,12 +52,18 @@ app/posts/hello.mdx
 ```text
 content/                    ← 你放文章的目录（不在 app/ 下！）
 ├─ hello.mdx                ← 支持 JSX
-└─ pure-markdown.md         ← 纯 Markdown
+├─ tech/                    ← 子目录 = 分类（零配置）
+│  ├─ _meta.json            ←   分类名与描述
+│  └─ nested-post.mdx       ←   /posts/tech/nested-post
+└─ life/
+   ├─ reading-notes.md       ← 纯 Markdown
+   └─ reading-notes.json     ←   .md 的元数据走这里（旁路）
 
-lib/posts.ts                ← 扫描目录 + 动态 import
+lib/posts.ts                ← 递归扫描目录 + 动态 import
 app/posts/
-├─ page.tsx                 ← 列表页（自动生成）
-└─ [slug]/page.tsx          ← 详情页（动态路由）
+├─ page.tsx                 ← 列表页（自动生成 + 分类导航）
+└─ [...slug]/page.tsx       ← 详情页（catch-all，支持多段路径）
+app/category/[category]/    ← 分类页（分类由目录名自动推导）
 ```
 
 ---
@@ -114,41 +120,82 @@ export type PostFile = {
 
 export function getPostFiles(): PostFile[] {
   if (!fs.existsSync(POSTS_DIR)) return [];
-  return fs
-    .readdirSync(POSTS_DIR)
+
+  const all = fs
+    .readdirSync(POSTS_DIR, { recursive: true })          // ← 递归
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((file) => file.split(path.sep).join("/"));        // ⚠️ Windows 反斜杠
+
+  return all
     .filter((file) => POST_EXT.test(file))
-    .map((file) => ({ slug: file.replace(POST_EXT, ""), file }))
+    .filter((file) => !file.split("/").some((s) => s.startsWith("_")))  // 跳过 _meta.json
+    .map((file) => {
+      const slug = file.replace(POST_EXT, "");
+      const parts = slug.split("/");
+      return {
+        slug,
+        slugParts: parts,
+        file,
+        category: parts.length > 1 ? parts[0] : undefined,
+        baseSlug: parts[parts.length - 1],
+      };
+    })
     .sort((a, b) => a.slug.localeCompare(b.slug));
 }
 ```
 
 > **为什么 `slug` 和 `file` 要分开**？这是本课最大的坑，见 §4.1。
 
-### 3.3 动态 import 渲染（`app/posts/[slug]/page.tsx`）
+### 3.3 动态 import 渲染（`app/posts/[...slug]/page.tsx`）
 
 ```tsx
 export function generateStaticParams() {
-  return getPostFiles().map((p) => ({ slug: p.slug }));
+  // ⚠️ 必须是【数组】形式 —— catch-all 动态段的 params.slug 是 string[]
+  return getPostFiles().map((p) => ({ slug: p.slugParts }));
 }
 
-export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PostPage({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params;
-  const entry = getPostFiles().find((p) => p.slug === slug);
+  const entry = getPostFiles().find((p) => p.slug === slug.join("/"));
   if (!entry) {
     notFound();
   }
 
-  const { default: Post, metadata } = await import(`@/content/${entry.file}`);
+  const { default: Post } = await import(`@/content/${entry.file}`);
+  const metadata = await getPostMeta(entry.slug);   // ⚠️ 走 getPostMeta，见 §5.2
   return <article>{/* … */}<Post /></article>;
 }
 ```
 
-`generateStaticParams()` 在**构建期**扫描目录，把每个文件名变成一条具体路由。
+`generateStaticParams()` 在**构建期**扫描目录，把每个文件变成一条具体路由。
 运行时再用动态 import 取出文件内容渲染。
+
+> **为什么是 `[...slug]` 而不是 `[slug]`？**
+> `[slug]` 只匹配**一段**路径。`content/tech/post.mdx` 对应 `/posts/tech/post` 有**两段**，
+> `[slug]` 匹配不上（会 404），必须用 catch-all `[...slug]`。
+
+### 3.4 分类页：分类由目录名自动推导（`app/category/[category]/page.tsx`）
+
+```tsx
+export function generateStaticParams() {
+  return getCategories().map((c) => ({ category: c.name }));
+}
+```
+
+分类的显示名与描述放在分类目录下的 `_meta.json`：
+
+```json
+{
+  "name": "技术",
+  "description": "Next.js / React 相关的深度笔记"
+}
+```
+
+> 下划线开头的文件会被扫描器跳过（不当成文章），专供元数据使用。
 
 ---
 
-## 四、⚠️ 三个实测踩到的坑
+## 四、⚠️ 四个实测踩到的坑
 
 ### 4.1 坑 1：动态 import 的 key 必须是「含扩展名的完整文件名」
 
@@ -221,6 +268,29 @@ await import(`@/content/${entry.file}`)        // ✅ 稳定
 > **这就是同一个坑的第二次出现。** 看到「页面显示 404 但状态码是 200」时，
 > 先想「这条路由是不是 PPR 壳子」，而不是「`notFound()` 写错了」。
 
+### 4.5 坑 4：Windows 的路径分隔符
+
+```ts
+fs.readdirSync(dir, { recursive: true })
+// Windows 上返回： "tech\nested-post.mdx"   ← 反斜杠！
+// Linux/macOS 上返回： "tech/nested-post.mdx"
+```
+
+反斜杠拼出来的 import key 与打包器生成的 context map 对不上：
+
+```text
+Error: Cannot find module '@/content/tech\nested-post.mdx'
+```
+
+**必须统一转成正斜杠**：
+
+```ts
+.map((file) => file.split(path.sep).join("/"))
+```
+
+> 这是个典型的「Windows 上开发、Linux 上构建」才暴露的坑 ——
+> 跨平台项目里 `path.sep` 一定要处理。
+
 ---
 
 ## 五、元数据：用 `export const metadata` 而不是 YAML frontmatter
@@ -243,12 +313,76 @@ export const metadata = {
 
 | 写法 | 支持情况 | 备注 |
 |---|---|---|
-| `export const metadata = {...}` | ✅ MDX 原生 | Next 标准 metadata，自动进 `<head>`，类型安全 |
+| `export const metadata = {...}` | ✅ 仅 `.mdx` | Next 标准 metadata，自动进 `<head>`，类型安全 |
 | YAML frontmatter（`---` 包裹） | ❌ 默认不支持 | 要自己加 remark 插件（如 `remark-frontmatter`） |
-| `export const frontmatter = {...}` | ⚠️ 自定义 | 只是个普通导出，Next 不认，得自己读 |
+| 同名 `.json` 旁路 | ✅ `.md` 与 `.mdx` 通用 | 见 §5.2 |
 
 > 补充：`generateMetadata` 也能在 MDX 里用 —— 它和 `metadata` 一样是 ESM 导出，
 > Next 会把它当成动态 metadata 的来源。
+
+### 5.2 ⚠️ `.md` 文件不支持 `export const metadata` —— 必须用 `.json` 旁路
+
+**实测结论**（本节最重要的坑）：
+
+| 文件类型 | 走什么解析 | JSX | `export const metadata` |
+|---|---|---|---|
+| `.mdx` | 完整 MDX | ✅ | ✅ 生效 |
+| `.md` | **纯 CommonMark** | ❌ 当成普通文本 | ❌ **被当正文渲染出来** |
+
+实测现象：在 `.md` 文件里写
+
+```md
+export const metadata = { title: "读书笔记" };
+```
+
+页面上会**原样显示这行代码**，标题则退化成文件名。
+
+> 原因：Next 对 `.md` 与 `.mdx` 用**不同的 loader 配置**（`format: 'md'` vs `'mdx'`），
+> `.md` 不启用 MDX 语法。`@next/mdx` 的 `extension` 只控制「哪些文件走 loader」，
+> 改不了「用哪种语法解析」。
+
+**解法：同名 `.json` 旁路文件**。
+
+```text
+content/life/reading-notes.md      ← 正文（纯 Markdown）
+content/life/reading-notes.json    ← 元数据
+```
+
+```json
+{
+  "title": "读书笔记：把复杂留给自己",
+  "date": "2026-10-20",
+  "excerpt": "一篇纯 Markdown 的文章，放在 life 分类里。",
+  "tags": ["读书", "随笔"]
+}
+```
+
+`lib/posts.ts` 里做合并（**旁路优先**）：
+
+```ts
+export async function getPostMeta(slug: string): Promise<PostMeta | null> {
+  const entry = getPostFiles().find((p) => p.slug === slug);
+  if (!entry) return null;
+
+  let meta: Partial<PostMeta> = {};
+  try {
+    const mod = await import(`@/content/${entry.file}`);
+    meta = (mod.metadata ?? {}) as Partial<PostMeta>;   // .mdx 的 ESM export
+  } catch {
+    // .md 文件走到这里很正常 —— 它没有 ESM export
+  }
+
+  if (entry.jsonFile) {
+    meta = { ...meta, ...readJsonMeta(entry.jsonFile) }; // .json 旁路优先
+  }
+
+  return { title: entry.baseSlug, ...meta };
+}
+```
+
+> ⚠️ **详情页一定要走 `getPostMeta()`**，不要直接用 `import()` 出来的 `metadata` ——
+> 后者拿不到 `.json` 旁路（这是本轮实测修掉的一个 bug：
+> `.md` 文章的标题一直退化成文件名）。
 
 ---
 
@@ -452,7 +586,71 @@ Error: Cannot find module '@/content/pure-markdown.mdx'
 **预期**：构建失败 —— 相对深度算错了。
 **改回来**。
 
-### 实验 6：验证 PPR 的 404 状态码坑点（第二次出现）
+### 实验 6：新建一个分类
+
+```bash
+mkdir -p content/study
+cat > content/study/_meta.json <<'EOF'
+{ "name": "学习", "description": "课程与读书笔记" }
+EOF
+cat > content/study/typescript.mdx <<'EOF'
+export const metadata = { title: "TypeScript 笔记", date: "2026-10-31" };
+
+# TypeScript 笔记
+EOF
+pnpm build && pnpm start
+```
+
+**预期**：
+
+- <http://localhost:3000/posts> 列表里出现分类徽标「study」
+- <http://localhost:3000/category/study> 能打开，标题显示「学习」（来自 `_meta.json`）
+- <http://localhost:3000/posts/study/typescript> 能打开
+
+> **零配置**：没有写过任何路由配置，分类页是自动推导出来的。
+
+### 实验 7：亲手触发坑 4（Windows 路径分隔符）
+
+把 `lib/posts.ts` 里的
+
+```ts
+.map((file) => file.split(path.sep).join("/"))
+```
+
+改成
+
+```ts
+// .map((file) => file.split(path.sep).join("/"))
+```
+
+```bash
+pnpm build
+```
+
+**预期**：构建失败，报
+
+```text
+Error: Cannot find module '@/content/tech\nested-post.mdx'
+```
+
+**改回来**。
+
+### 实验 8：亲手触发「.md 不支持 ESM 导出」
+
+在 `content/pure-markdown.md` 顶部加一行：
+
+```md
+export const metadata = { title: "会被当正文" };
+```
+
+```bash
+pnpm build && pnpm start
+```
+
+**预期**：构建**通过**（不报错！），但页面上会**原样显示这行代码**，
+标题仍是文件名。**把这一行删掉**，改用 `content/pure-markdown.json`。
+
+### 实验 9：验证 PPR 的 404 状态码坑点（第二次出现）
 
 ```bash
 curl -I http://127.0.0.1:3000/posts/not-exist
@@ -474,6 +672,10 @@ curl -I http://127.0.0.1:3000/posts/not-exist
 | 在映射表里没登记自定义组件 | 报「组件未找到」 | 登记进 `mdx-components.tsx` |
 | Tailwind v4 里找不到 `prose` 类 | 排版全乱 | `@plugin "@tailwindcss/typography"` |
 | 期望不存在的 slug 返回 404 | 实际是 200 | PPR 壳子导致；要真 404 用 Route Handler 显式返回 |
+| 分类目录里的文章不出现 | 扫描没递归 | `readdirSync(dir, { recursive: true })` |
+| 分类文章 404 | 用了 `[slug]` | 换 `[...slug]`（catch-all），params.slug 改成 `string[]` |
+| Windows 上构建报 `Cannot find module` | 路径是反斜杠 | `.split(path.sep).join("/")` |
+| `.md` 文章标题显示成文件名 | `.md` 不支持 ESM export | 改用同名 `.json` 旁路 |
 
 ---
 
@@ -487,15 +689,21 @@ curl -I http://127.0.0.1:3000/posts/not-exist
 6. `prose` 类为什么不生效？Tailwind v4 的插件怎么引？
 7. 加一篇文章后为什么必须重新 build？
 8. `/posts/not-exist` 返回 200 的原因是什么？
+9. 分类是怎么来的？新建一个分类要写多少代码？
+10. 为什么 `[slug]` 接不住 `content/tech/post.mdx`？
+11. `.md` 文件的元数据该怎么给？为什么不能写在 `.md` 里？
+12. Windows 上构建报 `Cannot find module` 是什么原因？
 
 ---
 
 ## 十一、小结 & 下一步
 
 - `@next/mdx` 是**编译期 loader**，遵循「一个文件 = 一个路由」，**不做目录扫描**。
-- 「目录即内容源」要自己补三件事：目录扫描 + 动态 import + 列表页。
-- 动态 import 的三个要点：**完整文件名**、**`@/` 别名**、**构建期扫描**。
-- 元数据用 MDX 原生的 `export const metadata`；组件定制走 `mdx-components.tsx`。
+- 「目录即内容源」要自己补四件事：递归扫描 + 动态 import + 列表页 + 分类页。
+- 动态 import 的四个要点：**完整文件名**、**`@/` 别名**、**构建期扫描**、**正斜杠**。
+- 分类**零配置**：`content/<分类名>/` 就是分类，`_meta.json` 可加名称与描述。
+- 元数据有两条来源：`.mdx` 用 `export const metadata`；`.md` 用同名 `.json` 旁路。
+- 组件定制走 `mdx-components.tsx`；正文排版记得 `@plugin "@tailwindcss/typography"`。
 - 又一次撞见 PPR 的 404 状态码坑 —— **同一个坑在不同页面复现，说明它是框架级行为**。
 
 **下一步** → 回到 [第 25 课 · 实测踩坑与学习路线](25_实测踩坑与学习路线.md) 做总复习，

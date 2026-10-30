@@ -438,8 +438,26 @@ export const knowledgeMap: KnowledgeSection[] = [
       {
         name: "动态 import 的 key 必须是完整文件名",
         href: "/posts",
-        file: "lib/posts.ts · app/posts/[slug]/page.tsx",
+        file: "lib/posts.ts · app/posts/[...slug]/page.tsx",
         desc: "动态 import 表达式会被编译成目录 context map，key 是完整路径。写死 .mdx 会导致 .md 文件找不到（报 Cannot find module）；应传含扩展名的完整文件名，并优先用 @/ 别名而非相对路径。",
+      },
+      {
+        name: "Windows 路径分隔符会打断 import",
+        href: "/posts/tech/nested-post",
+        file: "lib/posts.ts",
+        desc: "readdirSync(dir, {recursive:true}) 在 Windows 上返回反斜杠路径，拼出的 import key 与 context map 对不上，报 Cannot find module。必须 .split(path.sep).join('/')。",
+      },
+      {
+        name: ".md 不支持 export const metadata",
+        href: "/posts/life/reading-notes",
+        file: "content/life/reading-notes.json · lib/posts.ts",
+        desc: ".md 走纯 CommonMark 解析，ESM 导出会被当正文原样渲染出来（构建不报错）。.md 的元数据必须走同名 .json 旁路文件，且详情页要通过 getPostMeta() 合并而不是直接用 import 出来的 metadata。",
+      },
+      {
+        name: "分类目录需要 catch-all 路由",
+        href: "/category/tech",
+        file: "app/posts/[...slug]/page.tsx · app/category/[category]/page.tsx",
+        desc: "content/ 的子目录自动成为分类，零配置。但 [slug] 只匹配一段路径，接不住 /posts/tech/post —— 必须用 [...slug]（catch-all），且 params.slug 是 string[]。",
       },
     ],
   },
@@ -457,7 +475,13 @@ export const knowledgeMap: KnowledgeSection[] = [
         name: "目录即内容源",
         href: "/posts",
         file: "content/ · lib/posts.ts · app/posts/",
-        desc: "把 .md/.mdx 丢进 content/ 即成文章：generateStaticParams 构建期扫描目录 → 动态 import 按 slug 取文件 → 列表页自动生成。",
+        desc: "把 .md/.mdx 丢进 content/ 即成文章：generateStaticParams 递归扫描目录 → 动态 import 按路径取文件 → 列表页自动生成。",
+      },
+      {
+        name: "分类目录零配置",
+        href: "/category/tech",
+        file: "content/tech/ · app/category/[category]/page.tsx",
+        desc: "建一个文件夹就是一个新分类：content/tech/ → /category/tech。分类名与描述放分类目录下的 _meta.json（下划线开头会被扫描器跳过）。",
       },
       {
         name: "export const metadata",

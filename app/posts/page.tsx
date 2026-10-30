@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getAllPostMeta } from "@/lib/posts";
+import { getAllPostMeta, getCategories } from "@/lib/posts";
 
 /**
  * 文章列表页 —— 自动扫描 content/ 目录生成。
  *
- * 你往 content/ 里丢一个 .mdx 文件，这个列表就多一条（重新 build 后）。
+ * 你往 content/ 里丢一个 .md/.mdx 文件，这个列表就多一条（重新 build 后）。
+ * 往 content/<分类名>/ 里丢文件，就归到那个分类下。
  *
  * ⚠️ 构建产物形态说明：
  *   content/ 的目录扫描发生在【构建期】，所以这个页面是 ○ Static。
@@ -15,14 +16,29 @@ import { getAllPostMeta } from "@/lib/posts";
  */
 export default async function PostsIndex() {
   const posts = await getAllPostMeta();
+  const categories = getCategories();
 
   return (
     <div className="mx-auto max-w-2xl p-6">
       <h1 className="text-3xl font-bold">文章列表</h1>
       <p className="mt-2 text-sm opacity-70">
         内容源：<code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-gray-800">content/</code>
-        目录下的 .md / .mdx 文件 —— 放进去即成文章。
+        目录下的 .md / .mdx 文件 —— 放进去即成文章。子目录自动成为<b>分类</b>。
       </p>
+
+      {categories.length > 0 ? (
+        <nav className="mt-6 flex flex-wrap gap-2">
+          {categories.map((c) => (
+            <Link
+              key={c.name}
+              href={`/category/${c.name}`}
+              className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              {c.name} · {c.count}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
 
       <ul className="mt-8 flex flex-col gap-4">
         {posts.map((post) => (
@@ -31,10 +47,17 @@ export default async function PostsIndex() {
               href={`/posts/${post.slug}`}
               className="block rounded-lg border border-gray-200 p-4 transition hover:border-blue-400 dark:border-gray-700 dark:hover:border-blue-600"
             >
-              <h2 className="text-lg font-semibold">{post.title}</h2>
-              {post.date ? (
-                <p className="mt-1 text-xs opacity-60">{post.date}</p>
-              ) : null}
+              <div className="flex items-center gap-2">
+                {post.category ? (
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] uppercase opacity-70 dark:bg-gray-800">
+                    {post.category}
+                  </span>
+                ) : null}
+                {post.date ? (
+                  <span className="text-xs opacity-60">{post.date}</span>
+                ) : null}
+              </div>
+              <h2 className="mt-1 text-lg font-semibold">{post.title}</h2>
               {post.excerpt ? (
                 <p className="mt-2 text-sm opacity-75">{post.excerpt}</p>
               ) : null}
@@ -47,14 +70,17 @@ export default async function PostsIndex() {
         <h2 className="font-semibold">这是怎么做到的</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>
-            <code>generateStaticParams()</code> 在构建期扫描 content/，把每个文件名变成一条路由。
+            <code>generateStaticParams()</code> 递归扫描 content/，把每个文件变成一条路由。
           </li>
           <li>
-            页面里用动态 <code>{'import(`@/content/${slug}.mdx`)'}</code> 按 slug 取文件并渲染。
+            页面里用动态 <code>{'import(`@/content/${entry.file}`)'}</code> 按路径取文件并渲染。
           </li>
           <li>
             元数据来自 MDX 里的 <code>export const metadata</code> —— Next 原生支持，自动进{" "}
             <code>&lt;head&gt;</code>。
+          </li>
+          <li>
+            路由用 <code>[...slug]</code>（catch-all）才能接住 <code>分类/文件名</code> 这种多段路径。
           </li>
         </ul>
       </div>

@@ -1,0 +1,26 @@
+export const metadata = {
+  title: "深入理解 SSG 与 ISR",
+  date: "2026-10-28",
+  excerpt: "静态生成、增量静态再生、缓存失效，三者到底怎么配合。",
+};
+
+# 深入理解 SSG 与 ISR
+
+我在 `content/tech/` 目录里 —— 这篇会自动归到「tech」分类。
+
+## 生成阶段
+
+`generateStaticParams()` 返回的每个值都会在构建期被预渲染成独立 HTML。
+
+## 再生成阶段
+
+超过 `cacheLife` 的 revalidate 时间后，Next 在后台重新生成页面（用户仍看到旧内容）。
+
+```tsx
+async function getPost(id: string) {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 60, expire: 3600 });
+  cacheTag(`post-${id}`);
+  return posts.find((p) => p.id === id);
+}
+```

@@ -16,7 +16,7 @@
 | **是什么** | Next.js 16 特性地图 + 反模式对照表 + 实测踩坑清单 |
 | **不是什么** | ❌ 生产级 SaaS 模板 ❌ 最佳实践范本（代码里多处标注「仅供演示」） |
 | **技术底座** | Next.js 16.3.8 · React 19.3.0 · Tailwind v4 · TypeScript 5 · Turbopack |
-| **规模** | 55 个路由目录 · 28 个知识点主题 · 62 个构建产物页面 |
+| **规模** | 56 个路由目录 · 28 个知识点主题 · 70 个构建产物页面 |
 | **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
 | **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
 
@@ -1715,6 +1715,8 @@ eslint          9.39.2
 | 列表页 | 要自己写 | 自动扫描生成 |
 | frontmatter | 不支持 YAML，用 `export const metadata` | 同左 |
 | 加一篇文章 | 放进目录即可，但要 rebuild | 同左（构建期扫描 → 要 rebuild） |
+| 分类 | 需要自己建目录 + 写列表 | **子目录自动成为分类**，零配置 |
+| 纯 `.md` 元数据 | ❌ 不支持 ESM export | ✅ 同名 `.json` 旁路 |
 | 适合 | 少量、结构化的长文页面 | 博客 / 文档站 / 内容多的站点 |
 
 ### 11.2 本仓库的实现：三个关键点
@@ -1849,13 +1851,160 @@ export function useMDXComponents(): MDXComponents {
 </Callout>
 ```
 
+### 11.7 分类目录：子目录自动成为分类
+
+**放进去即成文章，分类也是零配置的** —— 建一个文件夹就是一个新分类：
+
+```text
+content/
+├─ hello.mdx              →  /posts/hello              （无分类）
+├─ tech/
+│  ├─ _meta.json          →  分类「技术」的名称与描述
+│  ├─ nested-post.mdx     →  /posts/tech/nested-post
+│  └─ ssg-deep-dive.mdx   →  /posts/tech/ssg-deep-dive
+└─ life/
+   ├─ _meta.json
+   ├─ reading-notes.md    →  /posts/life/reading-notes
+   └─ reading-notes.json  →  该 .md 文章的元数据（见 §11.8）
+```
+
+实现要点有三个：
+
+**① 递归扫描**（`lib/posts.ts`）：
+
+```ts
+const all = fs
+  .readdirSync(POSTS_DIR, { recursive: true })
+  .filter((entry): entry is string => typeof entry === "string")
+  .map((file) => file.split(path.sep).join("/"));   // ⚠️ Windows 反斜杠必须转成 /
+```
+
+**② 路由必须用 catch-all**（`app/posts/[...slug]/page.tsx`）：
+
+```tsx
+export function generateStaticParams() {
+  return getPostFiles().map((p) => ({ slug: p.slugParts }));   // 数组形式
+}
+```
+
+> ⚠️ `[slug]` 只匹配**一段**路径 —— `content/tech/post.mdx` 对应的 `/posts/tech/post`
+> 有两段，`[slug]` 匹配不上，**必须用 `[...slug]`**。
+
+**③ 分类页由目录名自动推导**（`app/category/[category]/page.tsx`）：
+
+```tsx
+export function generateStaticParams() {
+  return getCategories().map((c) => ({ category: c.name }));
+}
+```
+
+分类名、描述可以放在分类目录下的 `_meta.json`：
+
+```json
+{
+  "name": "技术",
+  "description": "Next.js / React 相关的深度笔记"
+}
+```
+
+> 下划线开头的文件会被扫描器跳过（不当成文章），专供元数据使用。
+
+### 11.8 ⚠️ `.md` 文件不支持 `export const metadata` —— 用 `.json` 旁路
+
+**实测结论**（这是本节最重要的坑）：
+
+| 文件类型 | 走什么解析 | JSX | `export const metadata` |
+|---|---|---|---|
+| `.mdx` | 完整 MDX | ✅ | ✅ 生效 |
+| `.md` | **纯 CommonMark** | ❌ 当成普通文本 | ❌ **被当正文渲染出来** |
+
+实测现象：在 `.md` 文件里写
+
+```md
+export const metadata = { title: "读书笔记" };
+```
+
+页面上会**原样显示这行代码**，标题则退化成文件名。
+
+> 原因：Next 对 `.md` 与 `.mdx` 用**不同的 loader 配置**（`format: 'md'` vs `'mdx'`），
+> `.md` 不启用 MDX 语法。`@next/mdx` 的 `extension` 只控制「哪些文件走 loader」，
+> 改不了「用哪种语法解析」。
+
+**解法：同名 `.json` 旁路文件**。
+
+```text
+content/life/reading-notes.md      ← 正文（纯 Markdown）
+content/life/reading-notes.json    ← 元数据
+```
+
+```json
+{
+  "title": "读书笔记：把复杂留给自己",
+  "date": "2026-10-20",
+  "excerpt": "一篇纯 Markdown 的文章，放在 life 分类里。",
+  "tags": ["读书", "随笔"]
+}
+```
+
+`lib/posts.ts` 里做合并（**旁路优先**）：
+
+```ts
+export async function getPostMeta(slug: string): Promise<PostMeta | null> {
+  const entry = getPostFiles().find((p) => p.slug === slug);
+  if (!entry) return null;
+
+  let meta: Partial<PostMeta> = {};
+  try {
+    const mod = await import(`@/content/${entry.file}`);
+    meta = (mod.metadata ?? {}) as Partial<PostMeta>;   // .mdx 的 ESM export
+  } catch {
+    // .md 文件走到这里很正常 —— 它没有 ESM export
+  }
+
+  if (entry.jsonFile) {
+    meta = { ...meta, ...readJsonMeta(entry.jsonFile) }; // .json 旁路优先
+  }
+
+  return { title: entry.baseSlug, ...meta };
+}
+```
+
+> ⚠️ **详情页一定要走 `getPostMeta()`**，不要直接用 `import()` 出来的 `metadata` ——
+> 后者拿不到 `.json` 旁路（这是本轮实测修掉的一个 bug）。
+
+### 11.9 本轮实测到的第三个坑：Windows 路径分隔符
+
+```ts
+fs.readdirSync(dir, { recursive: true })
+// Windows 上返回： "tech\\nested-post.mdx"   ← 反斜杠！
+// Linux/macOS 上返回： "tech/nested-post.mdx"
+```
+
+反斜杠拼出来的 import key 与打包器生成的 context map 对不上：
+
+```text
+Error: Cannot find module '@/content/tech\nested-post.mdx'
+```
+
+**必须统一转成正斜杠**：
+
+```ts
+.map((file) => file.split(path.sep).join("/"))
+```
+
+> 这是个典型的「Windows 上开发、Linux 上构建」才暴露的坑 ——
+> 跨平台项目里 `path.sep` 一定要处理。
+
 ### 11.6 验证入口
 
 | 地址 | 看什么 |
 |---|---|
-| <http://localhost:3000/posts> | 列表页 —— 自动列出 `content/` 下所有文章 |
+| <http://localhost:3000/posts> | 列表页 —— 自动列出所有文章 + 分类导航 |
+| <http://localhost:3000/category/tech> | 分类页 —— 列出 `content/tech/` 下的文章 |
 | <http://localhost:3000/posts/hello> | `.mdx` 文章（支持 JSX、自定义组件） |
-| <http://localhost:3000/posts/pure-markdown> | 纯 `.md` 文章 |
+| <http://localhost:3000/posts/tech/nested-post> | **分类目录下的文章**（多段路径） |
+| <http://localhost:3000/posts/life/reading-notes> | **纯 `.md` 文章**（元数据走 `.json` 旁路） |
+| <http://localhost:3000/posts/pure-markdown> | 顶层纯 `.md` 文章 |
 | <http://localhost:3000/mdx-page> | 仓库原有的单文件 MDX 页面（模式 A 的例子） |
 
 ```bash
