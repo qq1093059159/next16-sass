@@ -1,0 +1,31 @@
+export const metadata = {
+  title: "第一篇文章：用 MDX 写博客",
+  date: "2026-10-30",
+  excerpt: "把写好的 .mdx 文件丢进 content/ 目录，它就变成了一篇文章。",
+};
+
+# 你好，MDX
+
+这是一篇放在 `content/` 目录下的文章。**它同时支持 Markdown 和 JSX**。
+
+- 列表
+- 也能有 <span className="text-red-500">行内 JSX</span>
+- 还能用自定义组件（见 `mdx-components.tsx`）
+
+```tsx
+// 代码块也正常工作
+export default function Hello() {
+  return <div>你好</div>;
+}
+```
+
+> 引用块、表格、链接，全都是标准 Markdown 语法。
+
+<Callout type="info" title="这是自定义组件">
+  文章作者不需要 import 任何东西 —— `mdx-components.tsx` 里登记过的组件名，
+  在 .mdx 文件里可以直接用。
+</Callout>
+
+<Callout type="warn">
+  这是警告样式。`type` 可以是 `info` / `warn` / `danger`。
+</Callout>

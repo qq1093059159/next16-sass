@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Tailwind v4 的插件用 @plugin 指令引入（v3 是写进 tailwind.config.js）。
+   typography 插件提供 prose / prose-invert 等类，用来排版正文（文章、README 渲染等）。 */
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:is(.dark *));
 
 /* 定义整体主题样式 */

@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
-// import createMDX from '@next/mdx'
-// const withMDX = createMDX({
-//     //extension: /\.(md|mdx)$/ 默认只支持mdx文件,如果想额外支持md文件编写次行代码。
-// });
+import createMDX from '@next/mdx'
+const withMDX = createMDX({
+    extension: /\.(md|mdx)$/,
+});
 const nextConfig: NextConfig = {
   /* config options here */
   // 开启reactCompiler
@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
   // distDir: "dist", // 导出目录
   // trailingSlash: true, // 添加尾部斜杠，生成 /about/index.html 而不是 /about.html
   // 支持MDX
-  // pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
+  pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
 };
 
-export default nextConfig;
+export default withMDX(nextConfig);

@@ -16,7 +16,7 @@
 | **是什么** | Next.js 16 特性地图 + 反模式对照表 + 实测踩坑清单 |
 | **不是什么** | ❌ 生产级 SaaS 模板 ❌ 最佳实践范本（代码里多处标注「仅供演示」） |
 | **技术底座** | Next.js 16.3.8 · React 19.3.0 · Tailwind v4 · TypeScript 5 · Turbopack |
-| **规模** | 53 个路由目录 · 27 个知识点主题 · 59 个构建产物页面 |
+| **规模** | 55 个路由目录 · 28 个知识点主题 · 62 个构建产物页面 |
 | **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
 | **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
 
@@ -60,6 +60,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
 | [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
 | [**十、doc/ 教学文档**](#十doc-教学文档25-课体系) | **25 课教学拆解**：概念 + 真实代码 + 动手实验 + 自检 | 想系统跟着学 |
+| [**十一、MDX 与内容目录**](#十一mdx-与内容目录目录即内容源) | 把 .md/.mdx 丢进 `content/` 即成文章；两种 MDX 模式的区别 | 想写博客/做 CMS |
 
 ---
 
@@ -192,6 +193,7 @@ next16-sass/
 │   │   ├── home/               · useEffect 客户端守卫（反模式）
 │   │   ├── about/ albums/ books/ sign-in/[[...sign-in]]/
 │   │   ├── ssg/[id]/           · generateStaticParams + ISR + cacheTag
+│   │   ├── posts/              · 「目录即内容源」：列表页 + [slug] 详情页
 │   │   ├── revalidate/         · revalidatePath / revalidateTag / updateTag / refresh
 │   │   ├── optimistic/         · useOptimistic + useFormStatus（React 19）
 │   │   ├── intercepting/       · 拦截路由 @modal/(.)photo/[id] ★
@@ -234,11 +236,14 @@ next16-sass/
 │   │
 │   ├── sitemap.ts robots.ts manifest.ts icon.tsx opengraph-image.tsx
 │   └── instrumentation.ts      · register() + onRequestError()
+├── content/                    · 文章源目录（.md / .mdx），放进去即成文章
 ├── components/
 │   ├── DarkMode.tsx            · next-themes + shadcn Dropdown
+│   ├── mdx/Callout.tsx         · MDX 自定义组件（提示/注意/警告）
 │   ├── navigation/navbar/      · 服务端壳包客户端岛 ★最佳实践形态
 │   └── ui/                     · shadcn: button / input / dropdown-menu
 ├── lib/
+│   ├── posts.ts                · 扫描 content/ 目录 + 动态 import 文章
 │   ├── actions.ts              · 'use server'：Zod 登录校验
 │   ├── revalidate-actions.ts   · 'use server'：按需失效四件套
 │   ├── optimistic-actions.ts   · 'use server'：乐观更新的慢接口
@@ -279,6 +284,7 @@ next16-sass/
 | `/knowledge` | `(root)/knowledge/page.tsx` | **知识点地图（全仓库索引）** |
 | `/mycache` | `mycache/page.tsx` | Cache Components 对照：`use cache` ↔ `connection()` |
 | `/ssg` `/ssg/1` | `(root)/ssg/[id]/page.tsx` | generateStaticParams + ISR |
+| `/posts` `/posts/<slug>` | `posts/page.tsx`、`posts/[slug]/page.tsx` | **MDX 博客**：目录即内容源 |
 | `/revalidate` | `(root)/revalidate/page.tsx` | revalidatePath / revalidateTag / updateTag / refresh |
 | `/optimistic` | `(root)/optimistic/page.tsx` | useOptimistic + useFormStatus |
 | `/intercepting` | `(root)/intercepting/**` | 拦截路由：软导航弹窗 / 硬导航全屏 |
@@ -1682,6 +1688,189 @@ eslint          9.39.2
 > **按文档签名调用一遍**（`tsc` 零错误）；③ 所有反直觉结论都在生产实例上
 > **`curl` 实测复现**；④ 标题锚点用官方 `github-slugger` 复算、内部链接逐个核对。
 
+
+## 十一、MDX 与内容目录（目录即内容源）
+
+> **先回答一个常见疑问**：`@next/mdx` 支不支持「把写好的 markdown 放进某个目录，自动解析成文章」？
+>
+> **答：`@next/mdx` 本身不做目录扫描。** 它是一个**编译期 loader**，
+> 把 `.mdx` 文件编译成 React 组件，配合 `pageExtensions` 把它纳入 Next 的**文件式路由**。
+> 也就是说它遵循的是「**一个文件 = 一个路由**」：
+>
+> ```text
+> app/posts/hello.mdx   →   /posts/hello      ← 文件即路由，放进去就有路由
+> ```
+>
+> 但它**不会**帮你做这三件事：① 扫描任意目录生成列表页；② 解析 YAML frontmatter；
+> ③ 让你把文章放在 `app/` 之外的目录。
+>
+> 本仓库在 `app/posts/` 做了一套**「目录即内容源」**的实现，把这三件事补齐了。
+
+### 11.1 两种 MDX 模式的对比
+
+| | 模式 A：`@next/mdx` 文件式路由 | 模式 B：动态路由 + 目录扫描（本仓库 `/posts`） |
+|---|---|---|
+| 文章放哪 | 必须在 `app/` 的路由目录里 | 任意目录（这里是 `content/`） |
+| URL | 由文件所在目录决定 | 由你写代码决定（这里是 `/posts/<slug>`） |
+| 列表页 | 要自己写 | 自动扫描生成 |
+| frontmatter | 不支持 YAML，用 `export const metadata` | 同左 |
+| 加一篇文章 | 放进目录即可，但要 rebuild | 同左（构建期扫描 → 要 rebuild） |
+| 适合 | 少量、结构化的长文页面 | 博客 / 文档站 / 内容多的站点 |
+
+### 11.2 本仓库的实现：三个关键点
+
+**① 开启 MDX**（`next.config.ts`）—— 注意 `extension` 决定支持哪些扩展名：
+
+```ts
+import createMDX from '@next/mdx'
+const withMDX = createMDX({
+    extension: /\.(md|mdx)$/,   // 默认只支持 .mdx；这里连 .md 一起支持
+});
+// ...
+export default withMDX(nextConfig);
+```
+
+```ts
+  pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
+```
+
+> `pageExtensions` 必须**包含** `md` / `mdx`，Next 才会把它们当作页面文件处理。
+
+**② 扫描目录**（`lib/posts.ts`）：
+
+```ts
+const POSTS_DIR = path.join(process.cwd(), "content");
+const POST_EXT = /\.(md|mdx)$/;
+
+export function getPostFiles(): PostFile[] {
+  if (!fs.existsSync(POSTS_DIR)) return [];
+  return fs
+    .readdirSync(POSTS_DIR)
+    .filter((file) => POST_EXT.test(file))
+    .map((file) => ({ slug: file.replace(POST_EXT, ""), file }))
+    .sort((a, b) => a.slug.localeCompare(b.slug));
+}
+```
+
+**③ 动态 import 渲染**（`app/posts/[slug]/page.tsx`）：
+
+```tsx
+export function generateStaticParams() {
+  return getPostFiles().map((p) => ({ slug: p.slug }));
+}
+
+export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const entry = getPostFiles().find((p) => p.slug === slug);
+  if (!entry) notFound();
+
+  const { default: Post, metadata } = await import(`@/content/${entry.file}`);
+  return <article>{/* … */}<Post /></article>;
+}
+```
+
+### 11.3 ⚠️ 三个实测踩到的坑
+
+**坑 1：动态 import 的 key 必须是「含扩展名的完整文件名」**
+
+```tsx
+await import(`@/content/${slug}.mdx`)   // ❌ 写死 .mdx → .md 文件找不到
+await import(`@/content/${entry.file}`)  // ✅ entry.file = "hello.mdx" / "pure-markdown.md"
+```
+
+原因：动态 import 表达式会被打包器编译成「该目录下**所有匹配扩展名的文件**」的
+context map，key 是**完整路径**。写死 `.mdx` 就等于在 map 里只查 `.mdx` 那一类。
+
+> 报错长这样：`Error: Cannot find module '@/content/pure-markdown.mdx'`
+
+**坑 2：用 `@/` 别名，不要用相对路径**
+
+```tsx
+await import(`../../../content/${slug}.mdx`)   // ❌ 相对深度在不同页面里不一样，极易算错
+await import(`@/content/${entry.file}`)        // ✅ 稳定
+```
+
+**坑 3：加文章后需要重新 build**
+
+目录扫描发生在**构建期**（`generateStaticParams`），所以 `/posts` 与 `/posts/<slug>`
+在构建产物里都是 `○ Static`。想「加完文章立刻可见」有两条路：
+
+| 做法 | 效果 | 代价 |
+|---|---|---|
+| `await connection()` | 变成动态渲染，每次请求都扫目录 | 首屏变慢 |
+| `"use cache"` + `cacheTag("posts")` + `revalidateTag("posts")` | 静态 + 按需失效 | 多写一点代码 |
+
+本仓库保持**纯静态**（博客最常见的形态）。
+
+### 11.4 元数据：为什么用 `export const metadata` 而不是 YAML frontmatter
+
+`.mdx` 文件里可以写 ESM 导出，Next 会当成标准的 `metadata` 处理并自动写进 `<head>`：
+
+```mdx
+export const metadata = {
+  title: "第一篇文章：用 MDX 写博客",
+  date: "2026-10-30",
+  excerpt: "把写好的 .mdx 文件丢进 content/ 目录，它就变成了一篇文章。",
+};
+
+# 你好，MDX
+
+正文……
+```
+
+> `@next/mdx` **不解析 YAML frontmatter**（`---` 包裹的那种）。
+> 要用 YAML 得自己加 remark 插件。本仓库选择用 MDX 原生的 ESM 导出：
+> 类型安全、自动进 `<head>`、零额外依赖。
+
+### 11.5 MDX 组件定制（`mdx-components.tsx`）
+
+MDX 编译时会把文章里用到的**标签名**交给映射表：
+
+```tsx
+import type { MDXComponents } from "mdx/types";
+import { Callout } from "@/components/mdx/Callout";
+
+const components: MDXComponents = {
+  h1: (props) => <h1 className="mb-3 mt-8 text-2xl font-bold" {...props} />,
+  a: ({ href = "", children, ...props }) => (/* 站内/站外链接分别处理 */),
+  Callout,        // ← 登记后文章里就能直接写 <Callout type="warn">…</Callout>
+};
+
+export function useMDXComponents(): MDXComponents {
+  return components;
+}
+```
+
+效果（`content/hello.mdx` 里直接写，不用 import）：
+
+```mdx
+<Callout type="info" title="这是自定义组件">
+  文章作者不需要 import 任何东西。
+</Callout>
+```
+
+### 11.6 验证入口
+
+| 地址 | 看什么 |
+|---|---|
+| <http://localhost:3000/posts> | 列表页 —— 自动列出 `content/` 下所有文章 |
+| <http://localhost:3000/posts/hello> | `.mdx` 文章（支持 JSX、自定义组件） |
+| <http://localhost:3000/posts/pure-markdown> | 纯 `.md` 文章 |
+| <http://localhost:3000/mdx-page> | 仓库原有的单文件 MDX 页面（模式 A 的例子） |
+
+```bash
+# 验证构建产物形态
+pnpm build 2>&1 | grep -A3 posts
+# ├ ○ /posts
+# ├   /posts/[slug]
+# │ ├ ◐ /posts/[slug]
+# │ ├ ○ /posts/hello
+# │ └ ○ /posts/pure-markdown
+```
+
+> ⚠️ 顺带印证了第 [4.27](#427-实测坑点ppr-模式下-notfound-返回-200) 节那个坑：
+> 访问不存在的 `/posts/xxx` 会返回 **200** 而不是 404 —— 因为 `/posts/[slug]` 是
+> `◐` PPR 壳子，响应已开始流式输出，状态码就锁定了。详见 [第 06 课](doc/06_错误边界与404状态码.md)。
 
 ---
 

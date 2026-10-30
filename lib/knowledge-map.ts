@@ -429,6 +429,48 @@ export const knowledgeMap: KnowledgeSection[] = [
         file: "app/(root)/error.tsx",
         desc: "只渲染一个静态「error」字样等于没做错误边界：拿不到错误信息、也无法重试。global-error.tsx 还必须自己输出 html/body。",
       },
+      {
+        name: "OPTIONS 未定义时返回 405",
+        href: "/api/books",
+        file: "app/api/books/route.ts",
+        desc: "实测：路由未导出 OPTIONS 时 Next 16 返回 405 Method Not Allowed（带 Allow 头），并不会自动补一个 204。需要处理浏览器预检必须自己手写 OPTIONS（见 app/api/cors/route.ts）。",
+      },
+      {
+        name: "动态 import 的 key 必须是完整文件名",
+        href: "/posts",
+        file: "lib/posts.ts · app/posts/[slug]/page.tsx",
+        desc: "动态 import 表达式会被编译成目录 context map，key 是完整路径。写死 .mdx 会导致 .md 文件找不到（报 Cannot find module）；应传含扩展名的完整文件名，并优先用 @/ 别名而非相对路径。",
+      },
+    ],
+  },
+  {
+    title: "十、MDX 与内容目录",
+    summary: "@next/mdx 是编译期 loader（文件即路由）；要做「目录即内容源」需要自己补上目录扫描 + 动态 import。",
+    items: [
+      {
+        name: "@next/mdx 启用",
+        href: "/mdx-page",
+        file: "next.config.ts · mdx-components.tsx",
+        desc: "createMDX({ extension: /\\.(md|mdx)$/ }) + pageExtensions 包含 md/mdx。它把 .mdx 编译成 React 组件，遵循「一个文件 = 一个路由」，本身【不做目录扫描】。",
+      },
+      {
+        name: "目录即内容源",
+        href: "/posts",
+        file: "content/ · lib/posts.ts · app/posts/",
+        desc: "把 .md/.mdx 丢进 content/ 即成文章：generateStaticParams 构建期扫描目录 → 动态 import 按 slug 取文件 → 列表页自动生成。",
+      },
+      {
+        name: "export const metadata",
+        href: "/posts/hello",
+        file: "content/hello.mdx",
+        desc: "MDX 原生支持 ESM 导出，metadata 会自动进 <head>。@next/mdx 不解析 YAML frontmatter，要用 YAML 得加 remark 插件。",
+      },
+      {
+        name: "MDX 组件映射",
+        href: "/posts/hello",
+        file: "mdx-components.tsx · components/mdx/Callout.tsx",
+        desc: "登记过的组件名可在 .mdx 里直接用（如 <Callout type=warn>），作者无需 import 任何东西。",
+      },
     ],
   },
 ];
