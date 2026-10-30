@@ -20,7 +20,7 @@
 | **是什么** | Next.js 16 特性地图 + 反模式对照表 + 实测踩坑清单 |
 | **不是什么** | ❌ 生产级 SaaS 模板 ❌ 最佳实践范本（代码里多处标注「仅供演示」） |
 | **技术底座** | Next.js 16.3.8 · React 19.3.0 · Tailwind v4 · TypeScript 5 · Turbopack |
-| **规模** | 61 个路由目录 · 28 个知识点主题 · 95 个构建产物页面 |
+| **规模** | 61 个路由目录 · 28 个知识点主题 · 100 个构建产物页面 |
 | **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
 | **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
 | **⭐ 核心产出** | **[第十一章 · 内容引擎基座](#十一内容引擎文章站--博客站基座)** —— 把 .md/.mdx 丢进 `content/` 即成文章站（28 项能力 · 5 分钟移植）。已抽出为独立仓库 `content-engine-base` |
@@ -65,7 +65,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 | [七、架构师 Review：已知问题与 TODO](#七架构师-review已知问题与-todo) | 15 个真实缺陷清单（含已修复） | 想把它改造成生产基座 |
 | [八、13 天学习路径](#八13-天学习路径) | 按依赖顺序排的学习路线图 | 新手 |
 | [九、速查附录](#九速查附录) | 知识点覆盖清单 · 自测命令 · 版本号 · 调试技巧 | 日常查阅 |
-| [**十、doc/ 教学文档**](#十doc-教学文档25-课体系) | **25 课教学拆解**：概念 + 真实代码 + 动手实验 + 自检 | 想系统跟着学 |
+| [**十、doc/ 教学文档**](#十doc-教学文档27-课体系) | **27 课教学拆解**：概念 + 真实代码 + 动手实验 + 自检 | 想系统跟着学 |
 | [**十一、内容引擎：文章站 / 博客站基座**](#十一内容引擎文章站--博客站基座) | ⭐ **本仓库核心产出**：把 .md/.mdx 丢进 `content/` 即成文章站。24 项能力 · 24 个文件 · 5 分钟移植 · 业界对标 | **想搭博客/文章站/文档站** |
 
 ---
@@ -101,7 +101,7 @@ components/  lib/  context/  proxy.ts  mdx-components.tsx  api.http
 |---|---|---|
 | 运行时 | `next` 16.3.8 · `react` / `react-dom` 19.3.0 · `typescript` 5.9 | React Compiler 已开启 |
 | 构建 | Turbopack（dev 默认）· SWC · `@tailwindcss/postcss` 4 | Tailwind v4 **无** `tailwind.config.js` |
-| 样式 / UI | `tailwindcss` 4 · `tw-animate-css` · shadcn/ui(new-york/RSC) · `@radix-ui/react-*` · `cva` · `clsx` · `tailwind-merge` · `lucide-react` · `next-themes` | 暗黑模式基于 `next-themes` |
+| 样式 / UI | `tailwindcss` 4 · `tw-animate-css` · shadcn/ui(new-york/RSC) · `@radix-ui/react-*` · `cva` · `clsx` · `tailwind-merge` · `lucide-react` | 暗黑模式**零依赖自实现**（`lib/theme.ts`，见 [4.28](#428-亮暗模式零依赖实现弃用-next-themes-新增)） |
 | 数据 / 校验 | `zod` 4.3 | `z.treeifyError` 是 Zod 4 新 API |
 | 鉴权 | `@clerk/nextjs` 6.36 | ⚠️ 仅占位未接线，生产请换成熟方案 |
 | AI | `ai` 6.0 · `@ai-sdk/react` 3 · `@ai-sdk/deepseek` 2 | ⚠️ `app/api/chat` 是 501 占位，见[第五章](#五ai-能力专区ai-潮流达人视角) |
@@ -251,7 +251,9 @@ next16-sass/
 │   └── instrumentation.ts      · register() + onRequestError()
 ├── content/                    · 文章源目录（.md / .mdx），放进去即成文章
 ├── components/
-│   ├── DarkMode.tsx            · next-themes + shadcn Dropdown
+│   ├── DarkMode.tsx            · 三态主题菜单（零依赖）
+│   ├── theme/ThemeToggle.tsx   · 亮/暗切换按钮（零依赖，图标靠 CSS 切换）
+│   ├── theme/ThemeScript.tsx   · 防闪烁脚本（内联进 <head>）
 │   ├── mdx/Callout.tsx         · MDX 自定义组件（提示/注意/警告）
 │   ├── navigation/navbar/      · 服务端壳包客户端岛 ★最佳实践形态
 │   └── ui/                     · shadcn: button / input / dropdown-menu
@@ -261,8 +263,8 @@ next16-sass/
 │   ├── revalidate-actions.ts   · 'use server'：按需失效四件套
 │   ├── optimistic-actions.ts   · 'use server'：乐观更新的慢接口
 │   ├── knowledge-map.ts        · 知识点地图数据源
+│   ├── theme.ts                · 零依赖主题核心（applyTheme / setTheme / 防闪烁脚本）
 │   └── utils.ts                · cn() = clsx + tailwind-merge
-├── context/Theme.tsx           · next-themes Provider 二次封装
 ├── proxy.ts                    ← Next 16 新命名（原 middleware.ts）★
 ├── mdx-components.tsx          · MDX 全局组件映射约定
 └── api.http                    · REST Client 调试草稿
@@ -935,7 +937,7 @@ export function cn(...inputs: ClassValue[]) {
 ```css
 @import "tailwindcss";
 @import "tw-animate-css";
-@custom-variant dark (&:is(.dark *));   /* 把 dark: 改成基于 .dark 类，配合 next-themes */
+@custom-variant dark (&:is(.dark *));   /* 把 dark: 改成基于 .dark 类，由 lib/theme.ts 打上这个类 */
 
 /* 定义整体主题样式 */
 @theme inline {
@@ -1364,6 +1366,170 @@ curl -I http://127.0.0.1:3000/notfound
 3. SEO 敏感（不希望搜索引擎收录这些页）→ 配合 `robots` 元信息，
    并注意框架级「路由未匹配」仍然会正确返回 404。
 
+### 4.28 亮暗模式：零依赖实现（弃用 `next-themes`）★ 新增
+
+> 本项目**不用** `next-themes`，主题切换是自己实现的（`lib/theme.ts`）。
+> 这一节把「为什么这么做」和「怎么做」都摊开讲。
+
+#### 4.28.1 为什么弃用 `next-themes`
+
+`next-themes` 只做两件事：① 把 `class="dark"` 打到 `<html>` 上；② 提供一个 Context。
+这两件事用 **20 行原生 DOM** 就能做完，而引入它要付出：
+
+| 代价 | 说明 |
+|---|---|
+| 根布局必须包 `<ThemeProvider>` | 给整棵子树加了一层约束 |
+| 主题状态在 Context 里 | 想在任意组件读主题，必须是 Client Component 且在 Provider 内 |
+| 一个第三方依赖 | 内容引擎基座要能独立迁移，依赖越少越好 |
+
+shadcn/ui 官方文档给了两种做法：**`next-themes`（默认）** 与 **手动 class 切换**。
+本项目选后者 —— Tailwind v4 的 `dark:` 变体本来就是由 `.dark` 类驱动的，缺的是「谁来打这个类」。
+
+#### 4.28.2 三层机制
+
+```text
+① CSS 层：两套变量 + .dark 类选哪套
+   :root { --bg: #fff; ... }      ← 亮色
+   .dark { --bg: #0f1117; ... }  ← 暗色
+   @custom-variant dark (&:is(.dark *));
+
+② JS 层：把 .dark 类打到 <html> 上
+   applyTheme() → classList.toggle("dark") + style.colorScheme
+
+③ 时机层：内联脚本在 hydration 之前执行（防闪烁）
+   <head> 里的 <script> 同步跑 → 首屏就是对的颜色
+```
+
+#### 4.28.3 核心代码（`lib/theme.ts`）
+
+```ts
+export type Theme = "light" | "dark" | "system";
+export type ResolvedTheme = "light" | "dark";
+
+export const THEME_STORAGE_KEY = "theme";
+
+/** 把主题应用到 <html> 上 —— 全部机制的核心 */
+export function applyTheme(theme: Theme): ResolvedTheme {
+  const dark = theme === "dark" || (theme === "system" && systemPrefersDark());
+  const root = document.documentElement;
+
+  root.classList.toggle("dark", dark);
+  root.style.colorScheme = dark ? "dark" : "light";   // 浏览器原生 UI 也跟着变
+  root.setAttribute("data-theme", dark ? "dark" : "light");       // 解析后的实际主题
+  root.setAttribute("data-theme-pref", theme);                    // 用户原始偏好
+  return dark ? "dark" : "light";
+}
+
+/** 设置并持久化（派发事件通知其他组件） */
+export function setTheme(theme: Theme): ResolvedTheme {
+  try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch {}
+  const resolved = applyTheme(theme);
+  window.dispatchEvent(new Event(THEME_EVENT));
+  return resolved;
+}
+
+/** 在 light / dark 之间切换 */
+export function toggleTheme(): ResolvedTheme {
+  return setTheme(getResolvedTheme() === "dark" ? "light" : "dark");
+}
+```
+
+#### 4.28.4 ⚠️ 两个必须绕开的 hydration 坑
+
+**坑 1：图标不能用 React state 控制**
+
+服务端渲染时读不到 `localStorage`，所以「当前是不是暗色」这个状态**客户端首帧才知道**。
+如果用 `useState` / `useSyncExternalStore` 控制图标显示 → 首帧与服务端 HTML 不一致 → hydration mismatch。
+
+**本项目的解法：两个图标都在 DOM 里，靠 CSS 切换显隐**（shadcn/ui 官方 v4 模板同款）：
+
+```tsx
+<Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+<Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+```
+
+服务端和客户端渲染出的 HTML **完全一致** → 天然零 hydration 风险。
+「当前是不是暗色」只存在于 `<html>` 的 class 上，由 CSS 决定谁可见，**JS 完全不参与渲染判断**。
+
+> 同样的思路用在三态菜单上 —— 用 `DropdownMenuRadioGroup` 就必须知道当前选中项（要 state），
+> 所以改用普通 `DropdownMenuItem` + **CSS 画的 ✓ 标记**：
+
+```css
+.theme-current-mark { opacity: 0; }
+:root[data-theme="light"] [data-theme-value="light"],
+:root[data-theme="dark"]  [data-theme-value="dark"] { opacity: 1; }
+:root[data-theme-pref="system"] [data-theme-value="system"] { opacity: 1; }
+```
+
+**坑 2：`<html>` 必须加 `suppressHydrationWarning`**
+
+`class` 与 `style` 是**客户端脚本**加的，而服务端渲染时不知道用户偏好 → 两边属性不一致 → React 报错：
+
+```text
+A tree hydrated but some attributes of the server rendered HTML didn't match
+the client properties.
+```
+
+```tsx
+<html lang="en" suppressHydrationWarning>
+```
+
+这个属性只压制 `<html>` **自身**属性的警告，不影响任何子节点。
+
+#### 4.28.5 防闪烁：为什么脚本必须内联在 `<head>`
+
+```tsx
+<head>
+  <ThemeScript />   {/* <script dangerouslySetInnerHTML={{ __html: themeInitScript }} /> */}
+</head>
+```
+
+- **不能用 `next/script`**：它默认异步加载，等下完执行，页面已经闪了一帧亮色。
+- **不能靠服务端渲染正确主题**：那需要读 Cookie + 动态渲染，整站失去静态能力。
+- 内联脚本在 **HTML 解析阶段**同步执行，时机最早 → 首屏就是用户上次选的配色。
+
+脚本同时负责「跟随系统」的实时跟随：
+
+```js
+var mq = window.matchMedia("(prefers-color-scheme: dark)");
+mq.addEventListener("change", function () {
+  if (pref() === "system") apply("system");   // 系统变了 → 跟着变
+});
+```
+
+#### 4.28.6 ⚠️ 另一个实测坑：dev 用 `127.0.0.1` 访问 → React 根本不 hydrate
+
+用 `http://127.0.0.1:3000` 访问 dev server 时，Next 会判定为跨域并**拦截 dev 资源**：
+
+```text
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+```
+
+后果是客户端 chunk 被拦 → **React 不 hydrate** → 页面上所有交互全部失效，
+而且**控制台没有任何报错**（只有一行 warning），极难排查。
+
+```ts
+// next.config.ts
+allowedDevOrigins: ["127.0.0.1", "localhost"],
+```
+
+排查这个问题时，先确认「React 有没有 hydrate」：
+
+```js
+Object.keys(document.querySelector('button')).filter(k => k.startsWith('__react'))
+// 空数组 = 没 hydrate（不是你的组件写错了）
+```
+
+#### 4.28.7 验证
+
+| 操作 | 预期 |
+|---|---|
+| 首次访问（系统亮色） | `<html>` 无 `dark` 类，白底 |
+| 点切换按钮 | `<html class="dark">`，背景变 `rgb(15,17,23)`，`localStorage.theme = "dark"` |
+| F5 刷新 | 首屏**直接**是暗色（无闪烁） |
+| 偏好 `system` + 系统切暗色 | 自动变暗，无需刷新 |
+| 浏览器控制台 | **零** hydration 报错 |
+
 ## 五、AI 能力专区（AI 潮流达人视角）
 
 ### 5.1 现状盘点
@@ -1592,6 +1758,7 @@ export default nextConfig;
 | `proxy.ts`（Next 16 重命名） | — |
 | Tailwind v4 CSS-first 配置 | `app/globals.css` |
 | MDX 即路由页面 | `/mdx-page`（需先启用 `pageExtensions`） |
+| 亮暗模式零依赖实现（`.dark` 类 + 内联防闪烁脚本） | 任意页面右上角切换按钮 |
 
 > 运行时还有一份可点击的同款清单：<http://localhost:3000/knowledge>
 
@@ -1659,7 +1826,7 @@ eslint          9.39.2
 
 > 版本号以 `package.json` 为准。
 
-## 十、doc/ 教学文档（25 课体系）
+## 十、doc/ 教学文档（27 课体系）
 
 `doc/` 目录是本文档的**教学化拆解** —— 一次一个知识点，配可动手验证的实验步骤。
 

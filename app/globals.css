@@ -238,3 +238,27 @@
   background-size: 400% 400%;
   animation: gradientAnimation 15s infinite;
 }
+/* ── 主题菜单当前项标记 ────────────────────────────────────────────
+   为什么用 CSS 而不是 React state？
+   「当前选中哪个主题」这个状态存在 <html> 的 data-theme / data-theme-pref 属性上
+   （由 lib/theme.ts 的 applyTheme() 写入）。
+   如果用 React state 持有它，服务端渲染时读不到 localStorage，
+   首帧必然与客户端不一致 → hydration mismatch。
+   交给 CSS 判断后，React 完全不持有主题状态 → 零 hydration 风险。
+
+   .theme-current-mark 默认隐藏；命中当前项时显示 ✓。            */
+.theme-current-mark {
+  opacity: 0;
+}
+
+/* 解析后的实际主题是 light → 「浅色」项打勾 */
+:root[data-theme="light"] [data-theme-value="light"],
+/* 解析后的实际主题是 dark → 「深色」项打勾 */
+:root[data-theme="dark"] [data-theme-value="dark"] {
+  opacity: 1;
+}
+
+/* 用户原始偏好是 system（「跟随系统」项打勾）——与上面两条可同时命中 */
+:root[data-theme-pref="system"] [data-theme-value="system"] {
+  opacity: 1;
+}

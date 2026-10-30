@@ -46,3 +46,6 @@ next-env.d.ts
 # 内容引擎基座已抽出为独立仓库（content-engine-base）
 # 这里保留一份是为了随时对照/回迁 —— 但不再纳入版本控制
 web/
+
+# playwright-cli 的临时输出目录
+.playwright-cli/

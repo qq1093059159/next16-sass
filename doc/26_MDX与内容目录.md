@@ -226,15 +226,21 @@ pnpm build
 | 标签页 | `tags` 已在 frontmatter 里，但还没有 `/tags/<tag>` 页面 |
 | 草稿 | 需要在 `getPostFiles()` 里过滤 `draft: true` |
 | 分页 | 列表页目前一次渲染全部 |
-| 多级分类 | `category` 取路径第一段，`content/a/b/c.mdx` 归到分类 `a` |
+| ~~多级分类~~ | ✅ 已支持 —— `getCategories()` 返回所有层级，路由用 catch-all |
 
-### 3.4 分类页：分类由目录名自动推导（`app/category/[category]/page.tsx`）
+### 3.4 分类页：分类由目录名自动推导（`app/category/[...category]/page.tsx`）
 
 ```tsx
 export function generateStaticParams() {
-  return getCategories().map((c) => ({ category: c.name }));
+  return getCategories().map((c) => ({ category: c.path.split("/") }));
 }
 ```
+
+> ⚠️ 这里也必须是 **catch-all**（`[...category]`）而不是 `[category]` ——
+> `content/a/b/post.mdx` 会产生 `a` 与 `a/b` **两级**分类，
+> `/category/a/b` 是两段路径，`[category]` 接不住。
+> 同理 `getCategories()` 返回的是**所有层级**的分类节点（`CategoryNode`），
+> 不是只有第一段。
 
 分类的显示名与描述放在分类目录下的 `_meta.json`：
 
@@ -569,7 +575,7 @@ export function Callout({
 然后文章容器用：
 
 ```tsx
-<div className="prose prose-neutral dark:prose-invert mt-6 max-w-none leading-7">
+<div className="prose prose-neutral dark:prose-invert mt-8 max-w-none leading-7">
 ```
 
 | 类 | 作用 |

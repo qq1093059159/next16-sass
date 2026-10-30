@@ -140,7 +140,7 @@ export default function ServerOnlyPage() {
 import Link from "next/link";
 import React from "react";
 import Image from "next/image";
-import { ModeToggle } from "@/components/DarkMode";
+import ThemeToggle from "@/components/theme/ThemeToggle";
 const Navbar = () => {
   return (
     <nav className="flex-between background-light900_dark200 fixed z-50 w-full gap-5 p-6 shadow-lignt-300 dark:shadow-none sm:px-12">
@@ -157,7 +157,7 @@ const Navbar = () => {
         搜索
       </Link>
       <div className="flex-between gap-5">
-        <ModeToggle />
+        <ThemeToggle />
       </div>
     </nav>
   );
@@ -168,48 +168,44 @@ export default Navbar;
 
 ### 3.2 客户端岛
 
-`components/DarkMode.tsx`（**有** `"use client"`）：
+`components/theme/ThemeToggle.tsx`（**有** `"use client"`）：
 
 ```tsx
 "use client";
-import * as React from "react";
+
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-export function ModeToggle() {
-  const { setTheme } = useTheme();
+import { toggleTheme } from "@/lib/theme";
+
+export default function ThemeToggle({ className = "" }: { className?: string }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <button
+      type="button"
+      onClick={() => toggleTheme()}
+      title="切换亮色 / 暗色模式"
+      className={
+        "relative inline-flex h-8 w-8 items-center justify-center rounded-md border " +
+        "border-gray-300 transition hover:bg-gray-100 " +
+        "dark:border-gray-700 dark:hover:bg-gray-800 " +
+        className
+      }
+    >
+      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      <span className="sr-only">切换亮色 / 暗色模式</span>
+    </button>
   );
 }
 ```
 
-**整个 Navbar 里只有 `ModeToggle` 这一小块是客户端的** —— 只有它的 JS 会被下发。
+> ⚠️ 为什么图标不用 React state 控制？服务端渲染时读不到 `localStorage`，
+> 首帧必然与客户端不一致 → hydration mismatch。
+> 双图标都在 DOM 里、靠 CSS 的 `scale/rotate` 切换 → 服务端与客户端 HTML 完全一致。
+> 详见 [第 27 课 · 零依赖主题切换](27_零依赖主题切换.md)。
+
+> 另有一个**三态版本**（浅色 / 深色 / 跟随系统）在 `components/DarkMode.tsx`，
+> 用 shadcn 的 DropdownMenu 实现，同样不依赖 `next-themes`。
+
+**整个 Navbar 里只有 `ThemeToggle` 这一小块是客户端的** —— 只有它的 JS 会被下发。
 Navbar 本身、Logo 图片、链接全是服务端渲染的。
 
 ### 3.3 原则

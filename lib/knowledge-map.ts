@@ -332,6 +332,12 @@ export const knowledgeMap: KnowledgeSection[] = [
         desc: "★最佳实践：把 use client 尽量推向叶子节点，减少下发 JS 体积。",
       },
       {
+        name: "零依赖主题切换",
+        href: "/",
+        file: "lib/theme.ts · components/theme/ThemeScript.tsx",
+        desc: "弃用 next-themes：CSS 两套变量 + .dark 类驱动 + head 内联防闪烁脚本。图标的显隐交给 CSS（不用 state）→ 服务端与客户端 HTML 一致 → 零 hydration mismatch。",
+      },
+      {
         name: "next/image",
         href: "/myimage",
         file: "app/myimage/page.tsx",
@@ -464,6 +470,18 @@ export const knowledgeMap: KnowledgeSection[] = [
         href: "/posts/gfm-test",
         file: "next.config.ts",
         desc: "该插件无条件注入导出，没有 frontmatter 的文件也会生成 export const metadata = {}，与手写的同名导出撞名，报 Variable name conflict: metadata。用 name: 'frontmatter' 再由 JS 层合并。",
+      },
+      {
+        name: "图标用 state 控制会触发 hydration mismatch",
+        href: "/",
+        file: "components/theme/ThemeToggle.tsx · components/DarkMode.tsx",
+        desc: "服务端读不到 localStorage，客户端首帧才知道主题。用 useState/useSyncExternalStore 控制图标显示必然 mismatch（useSyncExternalStore 的 getSnapshot 首帧即返回真实值）。解法：双图标都在 DOM，靠 CSS 的 scale/rotate 切换显隐，状态完全交给 CSS。",
+      },
+      {
+        name: "dev 用 127.0.0.1 访问 → React 根本不 hydrate",
+        href: "/",
+        file: "next.config.ts（allowedDevOrigins）",
+        desc: "Next 会拦截跨域 dev 资源 → 客户端 chunk 被拦 → React 不 hydrate → 页面上所有交互失效，但控制台除一行 warning 外没有任何报错。解法：用 localhost 访问，或配 allowedDevOrigins。排查：Object.keys(document.querySelector('button')).filter(k=>k.startsWith('__react')) 为空即未 hydrate。",
       },
       {
         name: "分类目录需要 catch-all 路由",
