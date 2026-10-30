@@ -1739,7 +1739,7 @@ eslint          9.39.2
 **你只需要做一件事**：往 `content/` 里放 `.md` / `.mdx` 文件。
 路由、列表、分类、标签、搜索、RSS、草稿过滤 —— 全部自动。
 
-#### 能力清单（24 项，全部在本仓库实测通过）
+#### 能力清单（28 项，全部在本仓库实测通过）
 
 | # | 能力 | 实现方式 | 验证入口 |
 |---|---|---|---|
@@ -1767,6 +1767,10 @@ eslint          9.39.2
 | 22 | **相关文章** | 按**共同标签数**排序 | 任意文章底部 |
 | 23 | **归档页** | 按年月分组全部文章 | `/archive` |
 | 24 | **搜索快捷键 + 可分享** | `/` 聚焦、`⌘K` 跳转、`?q=` 分享 | `/search?q=缓存` |
+| 25 | **代码块复制按钮** | 客户端渐进增强，无 JS 时降级为纯代码块 | 任意含代码块的文章 |
+| 26 | **作者页** | `/author/<name>`，作者来自 frontmatter | `/author/next16-sass` |
+| 27 | **最后编辑时间** | Git 时间兜底 + 相对时间（客户端计算） | 任意文章的 byline |
+| 28 | **llms.txt** | 给 AI 爬虫的站点摘要（Markdown） | `/llms.txt` |
 
 #### 基座文件清单（18 个文件，复制走即可）
 
@@ -1775,6 +1779,9 @@ eslint          9.39.2
 | `lib/posts.ts` | **核心**：递归扫描、元数据合并、分类树、草稿过滤、分页、相邻文章、相关文章、归档 | ✅ |
 | `lib/seo.ts` | JSON-LD 结构化数据生成器（WebSite / BlogPosting / BreadcrumbList） | ✅ |
 | `lib/toc.ts` | 从 Markdown 提取目录（remark 解析 + github-slugger） | TOC 需要时 |
+| `lib/git.ts` | Git 最后编辑时间（构建期查 git log，容错降级） | 需要时 |
+| `components/mdx/CodeCopy.tsx` | 代码块复制按钮（客户端注入，渐进增强） | 需要时 |
+| `components/mdx/RelativeTime.tsx` | 相对时间（`useSyncExternalStore` 做 hydration 安全） | 需要时 |
 | `lib/reading-time.ts` | 阅读时长（中英加权公式） | ✅ |
 | `components/toc/index.tsx` | 目录客户端组件（滚动高亮 + 吸顶） | TOC 需要时 |
 | `components/search/SearchShortcut.tsx` | 全站快捷键（`/` 与 `⌘K`） | ✅ |
@@ -1794,6 +1801,8 @@ eslint          9.39.2
 | `app/rss.xml/route.ts` | RSS 2.0 输出 | RSS 时需要 |
 | `app/og/[...slug]/route.tsx` | 文章级动态 OG 图（ImageResponse） | OG 需要时 |
 | `app/archive/page.tsx` | 归档页（按年月分组） | 归档需要时 |
+| `app/author/[name]/page.tsx` | 作者页 | 需要时 |
+| `app/llms.txt/route.ts` | llms.txt（给 AI 爬虫的站点摘要） | 需要时 |
 | `content/**` | **你的文章**（示例可全删） | ✅ |
 | `next.config.ts` | MDX 启用 + 插件链（见 §11.9） | ✅ |
 | `app/globals.css` | `@plugin "@tailwindcss/typography"`（正文排版） | ✅ |
@@ -2647,12 +2656,11 @@ const byFuzzy = fuse.search(q).map((r) => ({ doc: r.item, score: 30 }));
 
 | 能力 | 成本 | 价值 |
 |---|---|---|
-| 深色模式切换按钮 | 低（`next-themes`） | 业界标配，用户预期 |
-| 作者页 | 低（`/author/[name]`） | 团队博客必备 |
-| 代码块复制按钮 | 中（自定义 rehype 插件 + 客户端组件） | 文档站高频需求 |
-| `llms.txt` | 低（一个 Route Handler） | 给 AI 爬虫的站点摘要，前沿趋势 |
-| Git 最后编辑时间 | 低（`git log` + 构建期读取） | 让读者知道内容新鲜度 |
 | 文档版本化 | 高 | 需要快照机制，慎入 |
+| 国际化（i18n） | 中高 | 多语言内容站刚需 |
+| 远程内容源（CMS） | 中 | 内容不在仓库里时 |
+| 全文检索（容错/拼音） | 中 | 现在是子串匹配，搜不出「缓存机制」能命中「缓存」以外的错词 |
+| 评论 / 订阅表单 | 低 | 属于应用层，按业务叠加 |
 
 ### 11.12 验证入口
 

@@ -13,6 +13,8 @@ import { extractToc } from "@/lib/toc";
 import { articleJsonLd, breadcrumbJsonLd, jsonLdScript } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
 import Toc from "@/components/toc";
+import CodeCopy from "@/components/mdx/CodeCopy";
+import RelativeTime from "@/components/mdx/RelativeTime";
 
 /**
  * 文章详情页 —— catch-all 动态路由 + 动态 import。
@@ -129,6 +131,9 @@ export default async function PostPage({
           : []),
       ])}
 
+      {/* 代码块复制按钮（客户端增强，渐进降级） */}
+      <CodeCopy />
+
       <div className="flex flex-col gap-10 lg:flex-row">
         {/* 左侧正文 */}
         <article className="min-w-0 flex-1">
@@ -157,18 +162,24 @@ export default async function PostPage({
               {metadata?.title ?? entry.baseSlug}
             </h1>
 
-            {/* byline：作者 / 日期 / 阅读时长 */}
+            {/* byline：作者 / 发布日期 / 最后更新 / 阅读时长 */}
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm opacity-70">
               {metadata?.author ? (
                 <span>
                   作者{" "}
-                  <span className="font-medium opacity-90">
+                  <Link
+                    href={`/author/${encodeURIComponent(metadata.author)}`}
+                    className="font-medium underline underline-offset-4 opacity-90"
+                  >
                     {metadata.author}
-                  </span>
+                  </Link>
                 </span>
               ) : null}
               {metadata?.date ? (
                 <time dateTime={metadata.date}>{metadata.date}</time>
+              ) : null}
+              {metadata?.updated && metadata.updated !== metadata.date ? (
+                <RelativeTime iso={metadata.updated} prefix="最后更新于" />
               ) : null}
               <span>{reading.text}</span>
             </div>

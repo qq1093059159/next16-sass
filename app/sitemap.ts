@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getAllPostMeta } from "@/lib/posts";
+import { getAllPostMeta, getAuthors } from "@/lib/posts";
 import { absoluteUrl } from "@/lib/site";
 
 /**
@@ -24,6 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl("/archive"), priority: 0.6, changeFrequency: "weekly" as const },
     { url: absoluteUrl("/tags"), priority: 0.6, changeFrequency: "weekly" as const },
     { url: absoluteUrl("/search"), priority: 0.3, changeFrequency: "monthly" as const },
+    { url: absoluteUrl("/llms.txt"), priority: 0.5, changeFrequency: "weekly" as const },
     { url: absoluteUrl("/knowledge"), priority: 0.7, changeFrequency: "weekly" as const },
   ];
 
@@ -34,7 +35,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  const all = [...staticRoutes, ...postRoutes];
+  // 作者页
+  const authorRoutes = (await getAuthors()).map((a) => ({
+    url: absoluteUrl(`/author/${encodeURIComponent(a.name)}`),
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.5,
+  }));
+
+  const all = [...staticRoutes, ...postRoutes, ...authorRoutes];
 
   // 未来文章很多时：这里返回 sitemap index 的子项即可
   return all.slice(0, MAX_URLS);

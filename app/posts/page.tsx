@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllTags, getCategories, getPostPage } from "@/lib/posts";
+import { getAllTags, getAuthors, getCategories, getPostPage } from "@/lib/posts";
 import SearchBox from "@/components/search/SearchBox";
 
 /**
@@ -21,6 +21,7 @@ export default async function PostsIndex() {
   const posts = info.posts;
   const categories = getCategories();
   const tags = await getAllTags();
+  const authors = await getAuthors();
 
   return (
     <div className="mx-auto max-w-2xl p-6">
@@ -65,9 +66,27 @@ export default async function PostsIndex() {
           </nav>
         ) : null}
 
+        {authors.length > 0 ? (
+          <nav className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wider opacity-50">作者</span>
+            {authors.map((a) => (
+              <Link
+                key={a.name}
+                href={`/author/${encodeURIComponent(a.name)}`}
+                className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                {a.name} · {a.count}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+
         <nav className="flex flex-wrap items-center gap-3 text-xs">
           <Link href="/archive" className="underline">
             归档
+          </Link>
+          <Link href="/llms.txt" className="underline">
+            llms.txt
           </Link>
           <Link href="/search" className="underline">
             搜索

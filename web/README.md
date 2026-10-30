@@ -76,6 +76,8 @@ draft: false
 | `/category/<name>` | 分类页（可多级，如 `/category/tech/sub`） |
 | `/tags` · `/tags/<tag>` | 标签页 |
 | `/archive` | **归档页**（按年月分组） |
+| `/author/<name>` | **作者页**（作者来自 frontmatter） |
+| `/llms.txt` | **给 AI 爬虫的站点摘要**（Markdown） |
 | `/search` | 全文搜索（中文子串匹配 + Fuse.js 英文容错），支持 `?q=` 分享 |
 | `/og/<slug>` | **文章级动态 OG 图**（1200×630 PNG） |
 | `/rss.xml` | RSS 2.0 订阅源 |
@@ -94,6 +96,7 @@ draft: false
 | sitemap | 含全部文章 + 静态页，`lastModified` 跟着 `updated` 走 |
 | robots.txt | 默认允许，屏蔽 `/search`；对 GPTBot / ClaudeBot 明确放开 |
 | 语义化 HTML | `<article>` / `<time>` / `<nav aria-label="面包屑">` |
+| llms.txt | 站点导航 + 全部文章的 Markdown 摘要（AI 爬虫友好） |
 
 ### 阅读体验
 
@@ -105,6 +108,9 @@ draft: false
 | 相关文章 | 按**共同标签数**排序，比「同分类」更精准 |
 | 上一篇 / 下一篇 | 按日期排序取相邻，首篇无上一篇、末篇无下一篇 |
 | 搜索快捷键 | `/` 聚焦搜索框、`⌘K`/`Ctrl+K` 跳搜索页、`Esc` 清空 |
+| 代码块复制 | 客户端注入按钮，无 JS 时降级为纯代码块 |
+| 最后编辑时间 | Git 时间兜底 + 相对时间（客户端计算，SEO 用绝对日期） |
+| 作者页 | `/author/<name>`，作者来自 frontmatter `author` |
 | 代码高亮 | Shiki，编译期完成，零运行时开销 |
 | 标题锚点 | `rehype-slug` 自动生成 id |
 

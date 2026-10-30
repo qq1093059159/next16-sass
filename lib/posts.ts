@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { getLastGitModified } from "@/lib/git";
 
 /**
  * 「目录即内容源」——递归扫描 content/ 下的文章。
@@ -196,6 +197,13 @@ export async function getPostMeta(slug: string): Promise<PostMeta | null> {
   // ② .json 旁路（优先级最高，适合放编译链读不到的字段）
   if (entry.jsonFile) {
     meta = { ...meta, ...readJsonMeta(entry.jsonFile) };
+  }
+
+  // ③ Git 最后编辑时间 —— frontmatter 没写 updated 时兜底
+  //    （读者据此判断内容新鲜度，Docusaurus / Fumadocs 的标配）
+  if (!meta.updated) {
+    const gitTime = getLastGitModified(entry.file);
+    if (gitTime) meta.updated = gitTime.slice(0, 10);
   }
 
   return { title: entry.baseSlug, ...meta };
@@ -460,6 +468,28 @@ export async function getRelatedPosts(
     .sort((a, b) => b.score - a.score || (b.post.date ?? "").localeCompare(a.post.date ?? ""))
     .slice(0, limit)
     .map((x) => x.post);
+}
+
+/**
+ * 列出所有作者及其文章数。
+ *
+ * 作者来自 frontmatter 的 `author` 字段；没写的归到「未署名」。
+ */
+export async function getAuthors(): Promise<
+  { name: string; count: number; posts: (PostMeta & { slug: string })[] }[]
+> {
+  const all = await getAllPostMeta();
+  const map = new Map<string, (PostMeta & { slug: string })[]>();
+
+  for (const post of all) {
+    const name = post.author ?? "未署名";
+    if (!map.has(name)) map.set(name, []);
+    map.get(name)!.push(post);
+  }
+
+  return [...map.entries()]
+    .map(([name, posts]) => ({ name, count: posts.length, posts }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /**
