@@ -1033,7 +1033,138 @@ export function getPostFiles(): PostFile[] {
 > 但**状态码是 200** —— 这正是 [第 06 课](06_错误边界与404状态码.md) 讲的 PPR 坑点。
 ---
 
-## 十一、常见错误
+## 十一、多级分类、路径分页与全文搜索
+
+最后三块拼图。
+
+### 11.1 多级分类：先厘清「文件系统路由」在哪儿生效
+
+> Next.js 的规则是「**目录结构 = URL 路径**」——
+> `app/shop/[id]/page.tsx` 就是 `/shop/:id`。
+>
+> **但那套规则作用于「页面文件」。** 我们的架构里，
+> 全部文章路由由**一个 catch-all 动态段**承担：`app/posts/[...slug]/page.tsx`。
+>
+> 那规则在哪一步生效？**在 `generateStaticParams`**：
+
+```ts
+// lib/posts.ts
+slugParts: ["a", "b", "post"]        // content/a/b/post.mdx
+
+// app/posts/[...slug]/page.tsx
+export function generateStaticParams() {
+  return getPostFiles().map((p) => ({ slug: p.slugParts }));   // ← 数组长度 = 路径深度
+}
+```
+
+catch-all 会为数组的**每一段**都生成实际路径 → `/posts/a/b/post`。
+
+> 💡 **实测结论**：把文件丢进 `content/a/b/` 立刻就生成了 `/posts/a/b/deep-post` ——
+> **多级分类在路由层面本来就支持**，不需要任何额外配置。
+>
+> 真正缺的是**分类页本身**的层级能力 —— 之前 `getCategories()` 只取路径第一段，
+> `/category/a/b` 根本不存在。
+
+补齐方式：
+
+```ts
+export type CategoryNode = {
+  path: string;        // "a/b"      完整路径
+  name: string;        // "b"        最后一段
+  depth: number;       // 1          层级深度（顶级为 0）
+  parent?: string;     // "a"        父分类
+  count: number;       // 直接挂在下面的文章数
+  totalCount: number;  // 含所有子分类的文章总数
+  children: string[];  // 子分类路径
+};
+```
+
+分类页路由改 **catch-all**（`[category]` 只匹配一段）：
+
+```tsx
+export function generateStaticParams() {
+  return getCategories().map((c) => ({ category: c.path.split("/") }));
+}
+```
+
+| 分类 | 面包屑 | 子分类导航 | 文章范围 |
+|---|---|---|---|
+| `/category/a` | 首页 / a | `b · 1` | `content/a/**`（含子分类） |
+| `/category/a/b` | 首页 / a / b | — | 只 `content/a/b/**` |
+
+### 11.2 路径分页：`/posts/page/2`
+
+| | 路径分页 | query 参数 |
+|---|---|---|
+| 渲染方式 | **静态生成** | 动态渲染（要 `await connection()`） |
+| SEO | 每页独立 URL | 所有页共用一个 URL |
+| 缓存 | 构建期定好 | 每次请求都算 |
+
+```ts
+export const POSTS_PER_PAGE = 6;
+
+export async function getPostPage(page: number): Promise<PostPageInfo> {
+  const all = await getAllPostMeta();
+  const totalPages = Math.max(1, Math.ceil(all.length / POSTS_PER_PAGE));
+  const current = Math.min(Math.max(1, page), totalPages);
+  return { page: current, totalPages, total: all.length, /* ... */ };
+}
+```
+
+> 💡 `generateStaticParams` **可以是 async** —— 总页数要读文章才知道，
+> `await getPostPage(1)` 拿到 `totalPages` 精确生成，比「保守估计 50 页」好
+> （不会生成一堆 404 路由）。另外从**第 2 页**开始 —— 第 1 页就是 `/posts`。
+
+路由匹配不冲突：`/posts/page/2` 命中静态段更具体的 `app/posts/page/[n]/page.tsx`，
+`/posts/tech/post` 命中 `app/posts/[...slug]/page.tsx`。
+
+### 11.3 全文搜索：构建期索引 + 子串匹配 + Fuse.js
+
+```ts
+export async function buildSearchIndex(): Promise<SearchDoc[]> {
+  const metas = await getAllPostMeta();
+  const files = getPostFiles();
+  return metas.map((meta) => {
+    const entry = files.find((f) => f.slug === meta.slug)!;
+    const raw = fs.readFileSync(path.join(POSTS_DIR, entry.file), "utf-8");
+    const { content: body } = matter(raw);              // 剥掉 frontmatter
+    return { ...meta, content: markdownToPlainText(body).slice(0, 800) };
+  });
+}
+```
+
+索引直接内联进 `/search` 页面传给客户端组件 —— **零额外请求，首屏就能搜**。
+
+**中文搜索为什么不能只靠 Fuse.js？**
+
+Fuse 的匹配算法是「位图 + 编辑距离」，而中文没有空格分词：
+
+| 查询 | 正文 | Fuse 距离 | 子串匹配 |
+|---|---|---|---|
+| `缓存` | `缓存机制` | 大（中文按字符算距离） | ✅ 命中 |
+
+所以是**两条腿走路**：
+
+```ts
+// ① 子串匹配（大小写不敏感）—— 中文 100% 可靠
+const scoreOf = (doc: SearchDoc): number => {
+  let score = 0;
+  if (doc.title.toLowerCase().includes(q)) score += 100;
+  if (doc.tags.some((t) => t.toLowerCase().includes(q))) score += 60;
+  if (doc.excerpt.toLowerCase().includes(q)) score += 40;
+  if (doc.content.toLowerCase().includes(q)) score += 20;
+  return score;
+};
+
+// ② Fuse.js 模糊匹配 —— 英文容错（拼错一个字母也能搜到）
+const byFuzzy = fuse.search(q).map((r) => ({ doc: r.item, score: 30 }));
+```
+
+> ⚠️ 索引体积随文章数线性增长（本仓库 12 篇 → 20KB）。
+> 几百篇以后改成「构建期生成静态 JSON + 客户端按需 fetch」。
+---
+
+## 十二、常见错误
 
 | 错误 | 后果 | 正确做法 |
 |---|---|---|
@@ -1054,7 +1185,7 @@ export function getPostFiles(): PostFile[] {
 
 ---
 
-## 十二、自检
+## 十三、自检
 
 1. `@next/mdx` 到底做了什么？它**不**做哪三件事？
 2. 动态 import 的 key 为什么必须是完整文件名？
@@ -1075,7 +1206,7 @@ export function getPostFiles(): PostFile[] {
 
 ---
 
-## 十三、小结 & 下一步
+## 十四、小结 & 下一步
 
 - `@next/mdx` 是**编译期 loader**，遵循「一个文件 = 一个路由」，**不做目录扫描**。
 - 「目录即内容源」要自己补四件事：递归扫描 + 动态 import + 列表页 + 分类页。

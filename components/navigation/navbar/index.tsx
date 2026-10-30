@@ -11,7 +11,12 @@ const Navbar = () => {
           Dev <span className="text-primary-500">Flow</span>
         </p>
       </Link>
-      <p>Global Search</p>
+      <Link
+        href="/search"
+        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+      >
+        搜索
+      </Link>
       <div className="flex-between gap-5">
         <ModeToggle />
       </div>

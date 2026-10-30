@@ -210,16 +210,141 @@ export async function getAllPostMeta(): Promise<
   return metas.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 }
 
-/** 列出所有分类名（顶层子目录），按文章数倒序 */
-export function getCategories(): { name: string; count: number }[] {
-  const map = new Map<string, number>();
-  for (const f of getPostFiles()) {
-    if (!f.category) continue;
-    map.set(f.category, (map.get(f.category) ?? 0) + 1);
+/**
+ * 一个分类节点（可能有多级）。
+ *
+ * 路径就是它在 content/ 里的相对目录路径：
+ *   content/tech/            →  分类 "tech"（顶层）
+ *   content/a/b/             →  分类 "a" 与 "a/b"（两级）
+ *
+ * ⚠️ 注意：**路由层面多级路径本来就支持** ——
+ *    `generateStaticParams` 返回 `{ slug: ["a", "b", "post"] }`，
+ *    catch-all `[...slug]` 会为每一段都生成实际路径（/posts/a/b/post）。
+ *    这里要补的是「分类页本身」的层级能力。
+ */
+export type CategoryNode = {
+  /** 完整路径，如 "a/b" */
+  path: string;
+  /** 最后一段的名字，如 "b" */
+  name: string;
+  /** 层级深度，顶级为 0 */
+  depth: number;
+  /** 父分类路径，顶级为 undefined */
+  parent?: string;
+  /** 直接挂在该分类下的文章数 */
+  count: number;
+  /** 该分类及其所有子分类下的文章总数 */
+  totalCount: number;
+  /** 子分类路径列表 */
+  children: string[];
+};
+
+/** 每页多少篇文章 */
+export const POSTS_PER_PAGE = 6;
+
+/**
+ * 分页信息。
+ *
+ * 用【路径分页】（`/posts/page/2`）而不是 query 参数（`/posts?page=2`）：
+ *   - 路径分页是【静态生成】的，每页都有独立 URL（SEO 友好）
+ *   - query 参数会让页面变成动态渲染，在 Cache Components 模式下要 `await connection()`
+ */
+export type PostPageInfo = {
+  /** 当前页码，从 1 开始 */
+  page: number;
+  /** 总页数 */
+  totalPages: number;
+  /** 总文章数 */
+  total: number;
+  /** 是否有上一页 */
+  hasPrev: boolean;
+  /** 是否有下一页 */
+  hasNext: boolean;
+  /** 当前页的文章 */
+  posts: (PostMeta & { slug: string; category?: string })[];
+};
+
+/**
+ * 取第 page 页的文章（page 从 1 开始）。
+ *
+ * page 超出范围时返回空数组（由调用方决定是 404 还是回退到最后一页）。
+ */
+export async function getPostPage(page: number): Promise<PostPageInfo> {
+  const all = await getAllPostMeta();
+  const total = all.length;
+  const totalPages = Math.max(1, Math.ceil(total / POSTS_PER_PAGE));
+
+  const current = Math.min(Math.max(1, page), totalPages);
+  const start = (current - 1) * POSTS_PER_PAGE;
+
+  return {
+    page: current,
+    totalPages,
+    total,
+    hasPrev: current > 1,
+    hasNext: current < totalPages,
+    posts: all.slice(start, start + POSTS_PER_PAGE),
+  };
+}
+
+/**
+ * 列出所有层级的分类。
+ *
+ * `content/a/b/post.mdx` 会产生两个分类节点："a" 与 "a/b"。
+ * 排序：先按层级，再按文章总数倒序 —— 保证树形结构在列表里是连续的。
+ */
+export function getCategories(): CategoryNode[] {
+  const files = getPostFiles();
+
+  // 统计每个分类路径下的文章数
+  const direct = new Map<string, number>();
+  for (const f of files) {
+    const parts = f.slugParts.slice(0, -1);          // 去掉文件名 = 目录部分
+    for (let i = 1; i <= parts.length; i++) {
+      const path = parts.slice(0, i).join("/");
+      direct.set(path, (direct.get(path) ?? 0) + 1);
+    }
   }
-  return [...map.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  const paths = [...direct.keys()].sort((a, b) => {
+    const depthDiff = a.split("/").length - b.split("/").length;
+    if (depthDiff !== 0) return depthDiff;
+    return (direct.get(b) ?? 0) - (direct.get(a) ?? 0) || a.localeCompare(b);
+  });
+
+  return paths.map((path) => {
+    const parts = path.split("/");
+    return {
+      path,
+      name: parts[parts.length - 1],
+      depth: parts.length - 1,
+      parent: parts.length > 1 ? parts.slice(0, -1).join("/") : undefined,
+      count: direct.get(path) ?? 0,
+      // totalCount = 该分类自己 + 所有后代分类的文章数
+      totalCount: files.filter((f) => {
+        const dirs = f.slugParts.slice(0, -1);
+        return dirs.join("/") === path || dirs.join("/").startsWith(`${path}/`);
+      }).length,
+      children: paths.filter((p) => p.startsWith(`${path}/`) && !p.slice(path.length + 1).includes("/")),
+    };
+  });
+}
+
+/**
+ * 取某个分类（可多级）下的文章。
+ *
+ * 包含该分类**及其所有子分类**下的文章：
+ *   getCategoryArticles("a")    →  content/a/** 的全部
+ *   getCategoryArticles("a/b")  →  只 content/a/b/** 的
+ */
+export async function getCategoryArticles(
+  categoryPath: string,
+): Promise<(PostMeta & { slug: string; category?: string })[]> {
+  const all = await getAllPostMeta();
+  return all.filter((p) => {
+    const dirs = p.slug.split("/").slice(0, -1).join("/");
+    return dirs === categoryPath || dirs.startsWith(`${categoryPath}/`);
+  });
 }
 
 /**

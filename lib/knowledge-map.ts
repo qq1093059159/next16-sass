@@ -508,6 +508,30 @@ export const knowledgeMap: KnowledgeSection[] = [
         desc: "登记过的组件名可在 .mdx 里直接用（如 <Callout type=warn>），作者无需 import 任何东西。",
       },
       {
+        name: "多级分类（路由层本来就支持）",
+        href: "/posts/a/b/deep-post",
+        file: "lib/posts.ts · app/posts/[...slug]/page.tsx",
+        desc: "「目录结构 = URL 路径」这条规则在 generateStaticParams 这一步生效：返回的 slug 数组长度 = 路径深度，catch-all 为每一段都生成实际路径。实测放进 content/a/b/ 立刻生成 /posts/a/b/post。",
+      },
+      {
+        name: "多级分类页（catch-all + 层级树）",
+        href: "/category/a/b",
+        file: "app/category/[...category]/page.tsx · lib/posts.ts",
+        desc: "分类页路由用 [...category]（[category] 只匹配一段）。getCategories() 返回所有层级节点（path/depth/parent/count/totalCount/children），页面带面包屑与子分类导航。/category/a 含子分类，/category/a/b 只含自己。",
+      },
+      {
+        name: "路径分页",
+        href: "/posts/page/2",
+        file: "app/posts/page/[n]/page.tsx · lib/posts.ts",
+        desc: "用路径分页而不是 ?page= query —— 前者静态生成、每页独立 URL（SEO 友好），后者要 await connection() 变动态。generateStaticParams 可以是 async，精确生成总页数；路由匹配不冲突（静态段 page 优先于 catch-all）。",
+      },
+      {
+        name: "全文搜索（中文子串 + Fuse 模糊）",
+        href: "/search",
+        file: "lib/search.ts · app/search/SearchClient.tsx",
+        desc: "索引在构建期算（读源文件剥 Markdown 标记得到正文纯文本），直接内联进页面传给客户端组件，零额外请求。★ Fuse.js 的编辑距离对中文无效（无空格分词），所以主路径是子串匹配，Fuse 只负责英文容错。",
+      },
+      {
         name: "RSS 订阅源",
         href: "/rss.xml",
         file: "app/rss.xml/route.ts · lib/site.ts",

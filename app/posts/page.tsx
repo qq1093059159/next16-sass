@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAllPostMeta, getAllTags, getCategories } from "@/lib/posts";
+import { getAllTags, getCategories, getPostPage } from "@/lib/posts";
 
 /**
  * 文章列表页 —— 自动扫描 content/ 目录生成。
@@ -15,7 +15,9 @@ import { getAllPostMeta, getAllTags, getCategories } from "@/lib/posts";
  *   本仓库把它保持为静态 —— 博客最常见的形态。
  */
 export default async function PostsIndex() {
-  const posts = await getAllPostMeta();
+  // 首页只渲染【第一页】，其余走 /posts/page/[n]
+  const info = await getPostPage(1);
+  const posts = info.posts;
   const categories = getCategories();
   const tags = await getAllTags();
 
@@ -34,11 +36,14 @@ export default async function PostsIndex() {
             <span className="text-xs uppercase tracking-wider opacity-50">分类</span>
             {categories.map((c) => (
               <Link
-                key={c.name}
-                href={`/category/${c.name}`}
+                key={c.path}
+                href={`/category/${c.path}`}
                 className="rounded-full border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                style={c.depth > 0 ? { marginLeft: `${c.depth * 12}px` } : undefined}
+                title={c.path}
               >
-                {c.name} · {c.count}
+                {c.depth > 0 ? "↳ " : ""}
+                {c.name} · {c.totalCount}
               </Link>
             ))}
           </nav>
@@ -60,6 +65,9 @@ export default async function PostsIndex() {
         ) : null}
 
         <nav className="flex flex-wrap items-center gap-3 text-xs">
+          <Link href="/search" className="underline">
+            搜索
+          </Link>
           <Link href="/tags" className="underline">
             全部标签
           </Link>
@@ -106,6 +114,23 @@ export default async function PostsIndex() {
           </li>
         ))}
       </ul>
+
+      {/* 分页导航 */}
+      {info.totalPages > 1 ? (
+        <nav className="mt-10 flex items-center justify-between border-t border-gray-200 pt-4 text-sm dark:border-gray-700">
+          <span />
+          <span className="text-xs opacity-60">
+            {info.page} / {info.totalPages} 页 · 共 {info.total} 篇
+          </span>
+          {info.hasNext ? (
+            <Link href={`/posts/page/${info.page + 1}`} className="underline">
+              下一页 →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      ) : null}
 
       <div className="mt-10 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950">
         <h2 className="font-semibold">这是怎么做到的</h2>
