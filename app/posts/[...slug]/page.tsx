@@ -105,7 +105,7 @@ export default async function PostPage({
   }));
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="px-6 py-8">
       {/* JSON-LD：Article + BreadcrumbList */}
       {jsonLdScript([
         articleJsonLd({

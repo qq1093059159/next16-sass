@@ -100,3 +100,14 @@
   主仓库保留一份供对照/回迁。**两边的改动必须分别提交**。
 - 主仓库 `content/` + `lib/posts.ts` + `app/posts/` 本身就是「内容引擎基座」本体，
   `web/` 只是它的独立可运行实例。
+
+## Cache Components 下的硬约束（2026-10-30 实测，勿踩）
+- 开了 `cacheComponents` 后，`params` / `searchParams` / `cookies()` / `headers()`
+  **必须在 `<Suspense>` 内读取** → 否则整条路由无法预渲染，报
+  `Next.js encountered runtime data during prerendering`（Blocking Route）。
+- 标准写法：**页面组件不 await params**，只把 Promise 往下传，
+  真正 await 的 async 子组件放进 `<Suspense>` 内部；配同宽骨架屏防布局跳动。
+- ⚠️ **build 能过、dev 才报错** —— dev 还要渲染「任意参数」的兜底版本。
+  验证必须访问一个 `generateStaticParams` 里**没有**的参数（如 `/tags/zzz`）。
+- 副作用：加 Suspense 后，枚举外参数的 **404 状态码变 200**（PPR 壳子锁定状态码，
+  与第 06 课同一个坑）。

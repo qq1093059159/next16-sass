@@ -44,7 +44,7 @@ export default async function AuthorPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
+    <div className="px-6 py-10">
       <header className="border-b border-gray-200 pb-6 dark:border-gray-700">
         <p className="text-xs uppercase tracking-wider opacity-60">作者</p>
         <h1 className="mt-1 text-3xl font-bold">{author.name}</h1>

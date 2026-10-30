@@ -72,7 +72,7 @@ export default async function PostsPageN({
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="p-6">
       <header className="border-b border-gray-200 pb-4 dark:border-gray-700">
         <p className="text-xs uppercase tracking-wider opacity-60">
           第 {info.page} / {info.totalPages} 页

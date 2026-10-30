@@ -71,7 +71,7 @@ export default async function CategoryPage({
   const children = categories.filter((c) => c.parent === path);
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="p-6">
       {/* 面包屑 */}
       <nav className="text-xs opacity-60">
         <Link href="/" className="underline">

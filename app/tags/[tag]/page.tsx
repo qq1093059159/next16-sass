@@ -52,7 +52,7 @@ export default async function TagPage({
   const posts = (await getAllPostMeta()).filter((p) => (p.tags ?? []).includes(tag));
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="p-6">
       <header className="border-b border-gray-200 pb-4 dark:border-gray-700">
         <p className="text-xs uppercase tracking-wider opacity-60">标签</p>
         <h1 className="mt-1 text-3xl font-bold">{tag}</h1>

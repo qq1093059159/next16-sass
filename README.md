@@ -1117,7 +1117,7 @@ prevents the route from being prerendered, blocking the page load...
 ```tsx
 export default function TagPage({ params }: { params: Promise<{ tag: string }> }) {
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="p-6">
       <Suspense fallback={<TagSkeleton />}>
         <TagContent params={params} />
       </Suspense>

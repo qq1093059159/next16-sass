@@ -11,7 +11,7 @@ import Link from "next/link";
  */
 export default function NotFound() {
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center p-6 text-center">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
       <p className="text-6xl font-black opacity-20">404</p>
       <h1 className="mt-2 text-2xl font-bold">页面不存在</h1>
       <p className="mt-2 text-sm opacity-70">
