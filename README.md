@@ -23,7 +23,7 @@
 | **规模** | 61 个路由目录 · 28 个知识点主题 · 95 个构建产物页面 |
 | **启动** | `pnpm install && pnpm dev` → http://localhost:3000 |
 | **总索引** | [`/knowledge`](http://localhost:3000/knowledge) —— 运行时知识点地图，9 大主题 50+ 条，全带跳转链接 |
-| **⭐ 核心产出** | **[第十一章 · 内容引擎基座](#十一内容引擎文章站--博客站基座)** —— 把 .md/.mdx 丢进 `content/` 即成文章站（24 项能力 · 5 分钟移植）。可运行实例见 `web/` |
+| **⭐ 核心产出** | **[第十一章 · 内容引擎基座](#十一内容引擎文章站--博客站基座)** —— 把 .md/.mdx 丢进 `content/` 即成文章站（28 项能力 · 5 分钟移植）。已抽出为独立仓库 `content-engine-base` |
 
 **目录骨架**（到分组为止，细节见[第三章](#三路由全景地图)）：
 
@@ -1712,6 +1712,10 @@ eslint          9.39.2
 >
 > **零框架依赖**（只用 Next 官方 `@next/mdx` + unified 插件链），
 > 不绑 Fumadocs / Nextra，不绑 CMS，不绑数据库。
+>
+> 📦 **已抽出为独立仓库**：[`content-engine-base`](https://github.com/next16-sass/content-engine-base)
+> —— 那是这套基座的**可运行实例**（独立项目、独立 README、MIT 协议），
+> 直接 clone 就能起一个博客/文章站/文档站。
 
 ### 11.0 基座速览
 
