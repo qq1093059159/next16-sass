@@ -96,10 +96,15 @@
   常见原因：dev 用 `127.0.0.1` 访问被 Next 拦截 dev 资源 → 需 `allowedDevOrigins` 或用 `localhost`。
 
 ## 仓库结构（重要）
-- **`web/` 是独立的 git 仓库**（有自己的 `.git`），被主仓库 `.gitignore` 忽略 ——
-  主仓库保留一份供对照/回迁。**两边的改动必须分别提交**。
-- 主仓库 `content/` + `lib/posts.ts` + `app/posts/` 本身就是「内容引擎基座」本体，
-  `web/` 只是它的独立可运行实例。
+- **`web/`（内容引擎实例）已于 2026-11-01 移出主仓库，重命名为
+  `E:\360Data\social-doc`（独立 git 仓库，已配置 remote）。**
+  `social-doc` 就是原先的 `web/` —— 内容站本体，自带 `content/` + `lib/posts.ts` +
+  `app/posts/` 等完整可运行实例。主仓库 `.gitignore` 第 48 行残留的 `web/` 已无意义，可删。
+- 主仓库 `next16-sass` 是「内容引擎基座」原型；`social-doc` 是它的一个独立可运行实例。
+  两边会互相同步改动（实例上的改进回灌基座，基座上的修复下放到实例）。
+- **同步约定**：两边改动各自提交（两个独立 git 仓库）。涉及内容站通用逻辑
+  （满宽布局、元数据铁律、主题零依赖、params 包 Suspense 等）时，改一处后要把
+  对应改动同步到另一边，避免分叉。
 
 ## Cache Components 下的硬约束（2026-10-30 实测，勿踩）
 - 开了 `cacheComponents` 后，`params` / `searchParams` / `cookies()` / `headers()`
@@ -118,3 +123,14 @@
 - **例外**：主仓库 `app/(root)/` 下的教学演示页与教学首页保持 `max-w-2xl` 居中 ——
   它们是逐个知识点的独立演示页，与内容站页面定位不同，不要一起改。
 - 头部导航与页脚同样满宽（`app/layout.tsx` 里去掉 `mx-auto max-w-6xl`）。
+
+## 元数据铁律（2026-10-30 实测踩坑）
+- MDX 元数据有**三条**来源，**必须走 `getPostMeta()` 合并**（frontmatter 优先）：
+  ① YAML frontmatter（编译成 `export const frontmatter`）
+  ② 手写 `export const metadata`（Next 原生）
+  ③ 同名 `.json` 旁路（不在编译产物里）
+- ❌ 绝不要在 `generateMetadata` 里写 `const meta = mod.metadata ?? {}` ——
+  只拿得到第 ② 条，用 frontmatter 写元数据的文章会**全部退化成文件名**
+  （title / description / keywords / og:title / publishedTime 全丢）。
+- ⚠️ 页面正文正常、**只有 `<head>` 是错的** → 肉眼发现不了，最容易漏到线上。
+- 自检命令：`grep -oE "<title>[^<]*</title>" .next/server/app/posts/hello.html`
